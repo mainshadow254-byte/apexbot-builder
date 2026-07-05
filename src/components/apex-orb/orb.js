@@ -249,7 +249,12 @@ export function mountApexOrb() {
               if (r && r.ok) {
                 p.textContent = "Bot running on " + best.name + " - see Bot Builder";
               } else {
-                p.textContent = "Could not start (" + ((r && r.reason) || "unknown") + ") - tap to retry";
+                var reasonText = (r && r.reason) === "not_logged_in"
+                  ? "Please log in first, then retry"
+                  : (r && r.reason) === "run_blocked"
+                    ? "Bot loaded but engine blocked the run - check Bot Builder, then retry"
+                    : "Could not start (" + ((r && r.reason) || "unknown") + ") - tap to retry";
+                p.textContent = reasonText;
                 p.disabled = false;
               }
             } catch (e) {

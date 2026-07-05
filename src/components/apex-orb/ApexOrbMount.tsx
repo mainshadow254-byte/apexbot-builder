@@ -9,6 +9,7 @@ const RISE_FALL_BOT_URL = '/apex-bots/rise_fall.xml';
 
 const ApexOrbMount: React.FC = () => {
     const { load_modal, run_panel, dashboard } = useStore();
+    const root_store = useStore();
 
     useEffect(() => {
         let cancelled = false;
@@ -80,9 +81,22 @@ const ApexOrbMount: React.FC = () => {
                     true
                 );
 
-                // 6. Let Blockly settle, then run
+                // 6. Pre-check login so we can report the truth
+                const client = (root_store as any)?.core?.client;
+                if (client && client.is_logged_in === false) {
+                    return { ok: false, reason: 'not_logged_in' };
+                }
+
+                // 7. Let Blockly settle, then run
                 await new Promise(r => setTimeout(r, 600));
                 await run_panel.onRunButtonClick();
+
+                // 8. Verify the bot ACTUALLY started (engine may block: login, invalid strategy, etc.)
+                await new Promise(r => setTimeout(r, 500));
+                const is_running = (run_panel as any)?.is_running === true;
+                if (!is_running) {
+                    return { ok: false, reason: 'run_blocked' };
+                }
 
                 return { ok: true };
             } catch (e) {
