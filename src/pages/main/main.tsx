@@ -41,6 +41,7 @@ import RunPanel from '../../components/run-panel';
 import ChartModal from '../chart/chart-modal';
 import Dashboard from '../dashboard';
 import PlaceholderPage from '../placeholder/placeholder-page';
+import ApexOrbMount from '@/components/apex-orb/ApexOrbMount';
 import RunStrategy from '../dashboard/run-strategy';
 import './main.scss';
 
@@ -565,6 +566,7 @@ const AppWrapper = observer(() => {
                 <TradingViewModal />
             </DesktopWrapper>
             <MobileWrapper>{!is_open && <RunPanel />}</MobileWrapper>
+            <ApexOrbMount />
             <Dialog
                 cancel_button_text={cancel_button_text || localize('Cancel')}
                 className='dc-dialog__wrapper--fixed'

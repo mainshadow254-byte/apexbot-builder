@@ -1,0 +1,88 @@
+/* ApexBot AI Orb */
+#apexOrb {
+  position: fixed; right: 24px; bottom: 90px; z-index: 99998;
+  width: 64px; height: 64px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: grab; user-select: none; touch-action: none;
+  background: radial-gradient(circle at 35% 30%, #ff5d73, #b3122b 70%);
+  box-shadow: 0 6px 24px rgba(255,45,80,.5), inset 0 -4px 10px rgba(0,0,0,.4), inset 0 3px 8px rgba(255,255,255,.3);
+}
+#apexOrb:active { cursor: grabbing; }
+.apex-orb-core {
+  font-weight: 800; font-size: 18px; color: #fff; letter-spacing: .5px;
+  text-shadow: 0 1px 3px rgba(0,0,0,.5); z-index: 2;
+}
+/* Rotating lightning ring (CSS-only, GPU) */
+.apex-orb-ring {
+  position: absolute; inset: -5px; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 55%, #ffe08a 70%, #fff6cf 78%, #ffd45c 86%, transparent 92% 100%);
+  filter: drop-shadow(0 0 6px rgba(255,210,90,.9));
+  animation: apexSpin 1.6s linear infinite;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+}
+@keyframes apexSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .apex-orb-ring { animation: none; } }
+
+/* Panel */
+#apexOrbPanel {
+  position: fixed; right: 24px; bottom: 168px; z-index: 99999;
+  width: 380px; max-width: calc(100vw - 32px); max-height: 70vh; overflow-y: auto;
+  background: #141821; color: #e9eef7; border: 1px solid #2a2f3a;
+  border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.55);
+}
+#apexOrbPanel.hidden { display: none; }
+.apex-panel-head {
+  display: flex; align-items: center; gap: 10px; padding: 16px 18px;
+  border-bottom: 1px solid #2a2f3a; position: sticky; top: 0; background: #141821; border-radius: 16px 16px 0 0;
+}
+.apex-panel-head h3 { margin: 0; font-size: 1.05rem; flex: 1; }
+.apex-panel-dot { width: 9px; height: 9px; border-radius: 50%; background: #2fe38b; box-shadow: 0 0 8px #2fe38b; }
+#apexPanelClose {
+  background: #1e2530; border: 1px solid #2a2f3a; color: #e9eef7;
+  width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 18px; line-height: 1;
+}
+#apexPanelClose:hover { background: #2a3340; }
+
+.orb-cascade{padding:14px 16px}
+.orb-crumb{background:#1e2530;border:1px solid #2a2f3a;border-radius:8px;padding:9px 12px;font-size:.8rem;color:#9fd0ff;margin-bottom:14px;min-height:18px}
+.orb-step{margin-bottom:14px}
+.orb-step.hidden{display:none}
+.orb-step label{display:block;font-size:.68rem;text-transform:uppercase;color:#93a1bd;margin-bottom:7px;letter-spacing:.5px}
+.orb-btns{display:flex;flex-wrap:wrap;gap:7px}
+.orb-b{background:#1e2530;border:1px solid #2a2f3a;color:#cdd6e5;border-radius:20px;padding:8px 14px;font-size:.8rem;cursor:pointer;font-family:inherit;transition:.15s}
+.orb-b:hover{border-color:#3d8bff}
+.orb-b.active{background:#3d8bff;border-color:#3d8bff;color:#04121a;font-weight:700}
+.orb-digits{display:flex;flex-wrap:wrap;gap:5px;width:100%;margin-bottom:8px}
+.orb-d{width:30px;height:30px;border-radius:7px;background:#1e2530;border:1px solid #2a2f3a;color:#cdd6e5;cursor:pointer;font-family:inherit}
+.orb-d.active{background:#ffb547;border-color:#ffb547;color:#04121a;font-weight:800}
+.orb-multi{display:flex;flex-direction:column;gap:4px;margin:6px 0 14px}
+.orb-switch{display:flex;align-items:center;gap:8px;font-size:.82rem;color:#cdd6e5;cursor:pointer}
+.orb-multi small{color:#6b7a94;font-size:.72rem}
+.orb-scan{width:100%;background:#2fe38b;color:#04121a;border:none;border-radius:10px;padding:12px;font-weight:800;cursor:pointer;font-family:inherit;font-size:.9rem}
+.orb-scan:disabled{background:#243040;color:#5a6a82;cursor:not-allowed}
+.orb-result{margin-top:14px;border-top:1px solid #2a2f3a;padding-top:12px}
+.orb-result.hidden{display:none}
+.orb-progress{font-size:.82rem;color:#9fd0ff;padding:10px 4px}
+.orb-rtitle{font-size:.68rem;text-transform:uppercase;letter-spacing:.5px;color:#93a1bd;margin:10px 0 8px}
+.orb-vcard{background:#1e2530;border:1px solid #2a2f3a;border-radius:10px;padding:12px;margin-bottom:10px;position:relative}
+.orb-vcard.best{border-color:#2fe38b;box-shadow:0 0 0 1px #2fe38b33}
+.orb-badge{position:absolute;top:-8px;right:10px;background:#2fe38b;color:#04121a;font-size:.6rem;font-weight:800;padding:2px 8px;border-radius:10px;letter-spacing:.5px}
+.orb-vhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.orb-vname{font-weight:700;font-size:.9rem;color:#e9eef7}
+.orb-vscore{font-size:1.4rem;font-weight:800}
+.orb-vrow{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.orb-pill{padding:3px 10px;border-radius:12px;font-size:.72rem;font-weight:700}
+.orb-assure{font-size:.75rem;font-weight:800}
+.orb-assure.safe{color:#2fe38b}.orb-assure.risky{color:#ffb547}
+.orb-vdir{font-size:.8rem;color:#cdd6e5;margin-bottom:6px}
+.orb-align{font-size:.76rem;font-weight:700;padding:5px 8px;border-radius:7px;margin-bottom:6px}
+.orb-align.ok{background:#2fe38b18;color:#2fe38b}
+.orb-align.no{background:#ff5d7318;color:#ff5d73}
+.orb-vol{font-size:.74rem;color:#ffb547;margin-bottom:6px}
+.orb-vmetrics{display:flex;flex-wrap:wrap;gap:8px;font-size:.72rem;color:#93a1bd}
+.orb-vmetrics span{background:#141821;border:1px solid #2a2f3a;border-radius:6px;padding:3px 7px}
+.orb-digit{font-size:.74rem;color:#9fd0ff;margin-top:6px}
+.orb-usealt{width:100%;background:#243040;border:1px solid #2fe38b;color:#2fe38b;border-radius:9px;padding:9px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px}
+.orb-proceed{width:100%;background:#2fe38b;color:#04121a;border:none;border-radius:10px;padding:12px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:6px}
+.orb-proceed.warn{background:#ffb547}
