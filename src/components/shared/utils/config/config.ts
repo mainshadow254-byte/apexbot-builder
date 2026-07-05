@@ -28,6 +28,9 @@ export const WS_SERVERS = {
 
 // Helper to check if we're on production domains
 export const isProduction = () => {
+    if (process.env.APP_ENV === 'production') return true;
+    if (process.env.APP_ENV === 'staging') return false;
+
     const hostname = window.location.hostname;
     const productionDomains = Object.values(PRODUCTION_DOMAINS) as string[];
     return productionDomains.includes(hostname);

@@ -163,7 +163,7 @@ const AppContent = observer(() => {
     if (common?.error) return null;
 
     return is_loading ? (
-        <ChunkLoader message={localize('Initializing Deriv Bot account...')} />
+        <ChunkLoader message={localize('Initializing ApexBot account...')} />
     ) : (
         <AuthLoadingWrapper>
             <ThemeProvider theme={is_dark_mode_on ? 'dark' : 'light'}>

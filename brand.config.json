@@ -1,11 +1,11 @@
 {
-    "brand_name": "YourBrand",
-    "brand_domain": "yourbrand.com",
+    "brand_name": "ApexTraders",
+    "brand_domain": "derivsignalhub.com",
     "brand_hostname": {
         "staging": "staging.yourbrand.com/dashboard",
         "production": "yourbrand.com/dashboard"
     },
-    "domain_name": "YourBrand.com",
+    "domain_name": "derivsignalhub.com",
     "colors": {
         "primary": "#3b82f6",
         "secondary": "#64748b",
@@ -58,14 +58,14 @@
         "css_variable_prefix": "--brand"
     },
     "platform": {
-        "name": "Trading Bot",
+        "name": "ApexBot",
         "logo": {
             "type": "component",
             "component_name": "BrandLogo",
-            "alt_text": "Trading Bot",
+            "alt_text": "ApexTraders",
             "link_url": "/",
             "show_text": false,
-            "text": "Trading Bot"
+            "text": "ApexTraders"
         },
         "footer": {
             "enable_language_settings": false,
@@ -73,10 +73,10 @@
         },
         "hostname": {
             "production": {
-                "com": "bot.yourbrand.com"
+                "com": "bot.derivsignalhub.com"
             },
             "staging": {
-                "com": "staging-bot.yourbrand.com"
+                "com": "staging-bot.derivsignalhub.com"
             }
         },
         "auth2_url": {
