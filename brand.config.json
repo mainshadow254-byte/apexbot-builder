@@ -2,18 +2,18 @@
     "brand_name": "ApexTraders",
     "brand_domain": "derivsignalhub.com",
     "brand_hostname": {
-        "staging": "staging.yourbrand.com/dashboard",
-        "production": "yourbrand.com/dashboard"
+        "staging": "staging-bot.derivsignalhub.com/dashboard",
+        "production": "bot.derivsignalhub.com/dashboard"
     },
     "domain_name": "derivsignalhub.com",
     "colors": {
-        "primary": "#3b82f6",
-        "secondary": "#64748b",
+        "primary": "#3d8bff",
+        "secondary": "#2fe3c3",
         "tertiary": "#8b5cf6",
-        "success": "#10b981",
-        "danger": "#ef4444",
-        "warning": "#f59e0b",
-        "info": "#0ea5e9",
+        "success": "#2fe38b",
+        "danger": "#ff5d73",
+        "warning": "#ffb547",
+        "info": "#3d8bff",
         "neutral": "#6b7280",
         "black": "#0f172a",
         "white": "#ffffff",
@@ -48,9 +48,30 @@
         }
     },
     "color_variants": {
-        "light_variants": [100, 200, 300, 400, 500],
-        "dark_variants": [600, 700, 800, 900],
-        "opacity_variants": [10, 20, 30, 40, 50, 60, 70, 80, 90]
+        "light_variants": [
+            100,
+            200,
+            300,
+            400,
+            500
+        ],
+        "dark_variants": [
+            600,
+            700,
+            800,
+            900
+        ],
+        "opacity_variants": [
+            10,
+            20,
+            30,
+            40,
+            50,
+            60,
+            70,
+            80,
+            90
+        ]
     },
     "theme_config": {
         "enable_dynamic_themes": true,
