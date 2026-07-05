@@ -240,10 +240,22 @@ export function mountApexOrb() {
 
         function wireProceed(best) {
           const p = result.querySelector("#orbProceed");
-          if (p) p.onclick = () => {
-            window.selectSymbolFromOrb?.(best.symbol);
+          if (p) p.onclick = async () => {
             window.ApexOrb.lastVerdict = best;
-            p.textContent = "Bot loading... (Stage 4 wires .xml load + run)";
+            p.disabled = true;
+            p.textContent = "Loading bot & starting on " + best.name + "...";
+            try {
+              const r = await window.apexLoadAndRun?.(best.symbol);
+              if (r && r.ok) {
+                p.textContent = "Bot running on " + best.name + " - see Bot Builder";
+              } else {
+                p.textContent = "Could not start (" + ((r && r.reason) || "unknown") + ") - tap to retry";
+                p.disabled = false;
+              }
+            } catch (e) {
+              p.textContent = "Error starting bot - tap to retry";
+              p.disabled = false;
+            }
           };
         }
 
