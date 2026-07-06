@@ -219,7 +219,11 @@
                         <value name="VALUE" strategy_value="size">
                           <block type="text_prompt_ext">
                             <field name="TYPE">NUMBER</field>
-                            <field name="TEXT">Martingale Multiplier (e.g. 2)</field>
+                            <value name="TEXT">
+                              <shadow type="text">
+                                <field name="TEXT">Martingale Multiplier (e.g. 2)</field>
+                              </shadow>
+                            </value>
                           </block>
                         </value>
                       </block>

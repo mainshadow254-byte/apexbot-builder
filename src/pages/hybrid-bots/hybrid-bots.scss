@@ -91,4 +91,18 @@
         opacity: 0.6;
         cursor: not-allowed;
     }
+
+    &__empty {
+        text-align: center;
+        padding: 5rem 2rem;
+        max-width: 480px;
+        margin: 3rem auto 0;
+        border: 1px dashed var(--border-normal, #d5d9e3);
+        border-radius: 14px;
+    }
+
+    &__empty-icon {
+        font-size: 2.6rem;
+        margin-bottom: 1rem;
+    }
 }
