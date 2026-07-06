@@ -74,53 +74,62 @@
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        gap: 1.2rem;
+        gap: 1.4rem;
     }
 
     &__circle {
         position: relative;
-        width: 68px;
-        height: 68px;
+        width: 74px;
+        height: 74px;
+    }
+
+    &__ring {
+        width: 100%;
+        height: 100%;
+    }
+
+    &__ring-track {
+        fill: none;
+        stroke: #2b303b;
+        stroke-width: 6;
+    }
+
+    &__ring-fill {
+        fill: none;
+        stroke-width: 6;
+        stroke-linecap: round;
+        transition: stroke-dasharray 0.4s ease;
+    }
+
+    &__circle-inner {
+        position: absolute;
+        inset: 7px;
         border-radius: 50%;
+        background: #171b28;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: #262b36;
         color: #fff;
-        border: 3px solid #3a3f4b;
         font-weight: 700;
     }
 
-    &__circle--green {
-        border-color: #2fe38b;
+    &__circle-inner .d {
+        font-size: 1.15rem;
+        line-height: 1;
     }
 
-    &__circle--blue {
-        border-color: #3d8bff;
-    }
-
-    &__circle--red {
-        border-color: #ff5d73;
-    }
-
-    &__circle--gold {
-        border-color: #ffb547;
-    }
-
-    &__circle .d {
-        font-size: 1.1rem;
-    }
-
-    &__circle .p {
-        font-size: 0.68rem;
+    &__circle-inner .p {
+        font-size: 0.6rem;
         opacity: 0.85;
+        margin-top: 2px;
     }
 
     &__circle .arrow {
         position: absolute;
         bottom: -16px;
-        color: #2fe38b;
+        left: 50%;
+        transform: translateX(-50%);
         font-size: 0.9rem;
     }
 

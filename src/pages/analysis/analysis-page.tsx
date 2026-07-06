@@ -160,12 +160,12 @@ const AnalysisPage: React.FC = () => {
     const gp = useMemo(() => gaps(digits), [digits.length, latestDigit]);
     const verdict = useMemo(() => honestVerdict(digits, prices), [digits.length, latestDigit]);
 
-    const ringClass = (d: number) => {
-        if (stats.highest && d === stats.highest.digit) return 'apex-analysis__circle--green';
-        if (stats.secondHighest && d === stats.secondHighest.digit) return 'apex-analysis__circle--blue';
-        if (stats.lowest && d === stats.lowest.digit) return 'apex-analysis__circle--red';
-        if (stats.secondLowest && d === stats.secondLowest.digit) return 'apex-analysis__circle--gold';
-        return '';
+    const ringColor = (d: number) => {
+        if (stats.highest && d === stats.highest.digit) return '#2fe38b';
+        if (stats.secondHighest && d === stats.secondHighest.digit) return '#3d8bff';
+        if (stats.lowest && d === stats.lowest.digit) return '#ff5d73';
+        if (stats.secondLowest && d === stats.secondLowest.digit) return '#ffb547';
+        return '#5a6376';
     };
 
     const last50 = digits.slice(-50);
@@ -197,13 +197,37 @@ const AnalysisPage: React.FC = () => {
                     <div className='apex-analysis__card'>
                         <h3>Digit Distribution</h3>
                         <div className='apex-analysis__circles'>
-                            {Array.from({ length: 10 }, (_, d) => (
-                                <div key={d} className={`apex-analysis__circle ${ringClass(d)}`}>
-                                    <span className='d'>{d}</span>
-                                    <span className='p'>{stats.pct[d].toFixed(2)}%</span>
-                                    {latestDigit === d && <span className='arrow'>▲</span>}
-                                </div>
-                            ))}
+                            {Array.from({ length: 10 }, (_, d) => {
+                                const C = 2 * Math.PI * 34;
+                                const maxPct = stats.highest?.pct || 1;
+                                const frac = Math.max(0.03, Math.min(1, stats.pct[d] / maxPct));
+                                const color = ringColor(d);
+                                return (
+                                    <div key={d} className='apex-analysis__circle'>
+                                        <svg viewBox='0 0 80 80' className='apex-analysis__ring'>
+                                            <circle cx='40' cy='40' r='34' className='apex-analysis__ring-track' />
+                                            <circle
+                                                cx='40'
+                                                cy='40'
+                                                r='34'
+                                                className='apex-analysis__ring-fill'
+                                                stroke={color}
+                                                strokeDasharray={`${(frac * C).toFixed(2)} ${C.toFixed(2)}`}
+                                                transform='rotate(-90 40 40)'
+                                            />
+                                        </svg>
+                                        <div className='apex-analysis__circle-inner'>
+                                            <span className='d'>{d}</span>
+                                            <span className='p'>{stats.pct[d].toFixed(2)}%</span>
+                                        </div>
+                                        {latestDigit === d && (
+                                            <span className='arrow' style={{ color }}>
+                                                ▲
+                                            </span>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                         <div className='apex-analysis__rank'>
                             <div>
