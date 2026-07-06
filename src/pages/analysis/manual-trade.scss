@@ -1,0 +1,216 @@
+.apex-manual {
+    background: var(--general-section-1);
+    border: 1px solid #3d8bff55;
+    border-radius: 14px;
+    padding: 1.6rem;
+    margin-bottom: 1.4rem;
+    color: var(--text-general);
+
+    h3 {
+        text-align: center;
+        letter-spacing: 0.12em;
+        font-size: 0.9rem;
+        color: var(--text-less-prominent);
+        margin: 0 0 1.4rem;
+        text-transform: uppercase;
+    }
+
+    &__types {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.6rem;
+        margin-bottom: 1.4rem;
+    }
+
+    &__types button {
+        border: 1px solid var(--border-normal);
+        background: var(--general-main-1);
+        color: var(--text-general);
+        border-radius: 8px;
+        padding: 0.7rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    &__types button.active {
+        background: #3d8bff;
+        color: #04121a;
+        border-color: #3d8bff;
+    }
+
+    &__row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.2rem;
+        align-items: flex-end;
+    }
+
+    &__field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex: 1;
+        min-width: 130px;
+    }
+
+    &__field label {
+        font-size: 0.68rem;
+        letter-spacing: 0.08em;
+        color: var(--text-less-prominent);
+        text-transform: uppercase;
+    }
+
+    &__field input {
+        padding: 0.7rem 0.9rem;
+        border-radius: 8px;
+        border: 1px solid var(--border-normal);
+        background: var(--general-main-1);
+        color: var(--text-general);
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    &__digits {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 1.2rem;
+    }
+
+    &__digits button {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        border: 1px solid var(--border-normal);
+        background: var(--general-main-1);
+        color: var(--text-general);
+        font-weight: 800;
+        cursor: pointer;
+    }
+
+    &__digits button.active {
+        background: #ffb547;
+        border-color: #ffb547;
+        color: #04121a;
+    }
+
+    &__preview {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1.2rem;
+    }
+
+    &__preview div {
+        background: var(--general-main-1);
+        border: 1px solid var(--border-normal);
+        border-radius: 8px;
+        padding: 0.9rem;
+        text-align: center;
+    }
+
+    &__preview .k {
+        font-size: 0.62rem;
+        letter-spacing: 0.08em;
+        color: var(--text-less-prominent);
+        text-transform: uppercase;
+    }
+
+    &__preview .v {
+        font-weight: 800;
+        margin-top: 4px;
+        font-size: 1.1rem;
+        color: #2fe38b;
+    }
+
+    &__buy {
+        width: 100%;
+        padding: 1rem;
+        border: none;
+        border-radius: 10px;
+        background: #2fe38b;
+        color: #04121a;
+        font-size: 1.05rem;
+        font-weight: 800;
+        cursor: pointer;
+        letter-spacing: 0.05em;
+    }
+
+    &__buy:disabled {
+        background: #3a3f4b;
+        color: var(--text-less-prominent);
+        cursor: not-allowed;
+    }
+
+    &__error {
+        color: #ff5d73;
+        font-size: 0.82rem;
+        margin: 0.6rem 0;
+        text-align: center;
+    }
+
+    &__status {
+        margin-top: 1rem;
+        padding: 0.9rem 1rem;
+        border-radius: 8px;
+        background: var(--general-main-1);
+        border-left: 3px solid #3d8bff;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    &__status--win {
+        border-left-color: #2fe38b;
+        color: #2fe38b;
+    }
+
+    &__status--loss {
+        border-left-color: #ff5d73;
+        color: #ff5d73;
+    }
+
+    &__monitor {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.8rem;
+        margin-top: 1rem;
+    }
+
+    &__monitor div {
+        background: var(--general-main-1);
+        border: 1px solid var(--border-normal);
+        border-radius: 8px;
+        padding: 0.7rem;
+        text-align: center;
+    }
+
+    &__monitor .k {
+        font-size: 0.6rem;
+        color: var(--text-less-prominent);
+        letter-spacing: 0.06em;
+    }
+
+    &__monitor .v {
+        font-weight: 800;
+        margin-top: 3px;
+    }
+
+    &__login {
+        text-align: center;
+        color: var(--text-less-prominent);
+        padding: 2rem;
+        font-size: 0.9rem;
+    }
+
+    &__note {
+        margin-top: 1rem;
+        font-size: 0.75rem;
+        color: var(--text-less-prominent);
+        background: var(--general-main-1);
+        border-left: 3px solid #ffb547;
+        padding: 0.7rem 1rem;
+        border-radius: 6px;
+    }
+}

@@ -11,6 +11,7 @@ import {
     resolveDecimals,
     riseFall,
 } from '@/external/apex-scanner/digit-analysis';
+import ManualTrade from './manual-trade';
 import './analysis-page.scss';
 
 const MAX_TICKS = 1000;
@@ -391,6 +392,8 @@ const AnalysisPage: React.FC = () => {
                             </div>
                         </div>
                     </div>
+
+                    <ManualTrade symbol={symbol} />
                 </>
             )}
         </div>
