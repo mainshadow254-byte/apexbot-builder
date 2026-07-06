@@ -27,7 +27,7 @@ const JournalPage = observer(() => {
                 </button>
             </div>
             <div className='apex-journal__body'>
-                {tab === 'transactions' ? <Transactions is_drawer_open /> : <Journal />}
+                {tab === 'transactions' ? <Transactions is_drawer_open={false} /> : <Journal />}
             </div>
         </div>
     );
