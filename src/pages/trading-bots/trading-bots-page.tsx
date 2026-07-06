@@ -5,6 +5,7 @@ import { getSavedWorkspaces } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
 import { Localize } from '@deriv-com/translations';
 import DashboardBotList from '@/pages/dashboard/bot-list/dashboard-bot-list';
+import './trading-bots.scss';
 
 const TradingBotsPage = observer(() => {
     const { load_modal } = useStore();
@@ -28,7 +29,7 @@ const TradingBotsPage = observer(() => {
     const has_strategies = !!dashboard_strategies?.length;
 
     return (
-        <div style={{ padding: '2.4rem', height: '100%', overflowY: 'auto', width: '100%' }}>
+        <div className='apex-trading-bots' style={{ padding: '2.4rem', height: '100%', overflowY: 'auto', width: '100%' }}>
             <Text as='h2' weight='bold' size='m' color='prominent' lineHeight='xxl'>
                 <Localize i18n_default_text='Trading Bots' />
             </Text>

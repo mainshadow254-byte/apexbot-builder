@@ -123,8 +123,9 @@
                 width: 100%;
 
                 &--main__tabs {
-                    max-width: calc(100vw - 3.2rem) !important;
-                    width: calc(100vw - 3.2rem) !important;
+                    max-width: 100% !important;
+                    width: 100% !important;
+                    min-width: 0;
                 }
 
                 @include mobile-or-tablet-screen {

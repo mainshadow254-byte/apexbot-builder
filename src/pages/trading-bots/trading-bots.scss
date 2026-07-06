@@ -1,0 +1,19 @@
+.apex-trading-bots {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+
+    .bot-list__container {
+        width: 100%;
+    }
+
+    .bot-list__wrapper {
+        width: 100%;
+    }
+
+    .bot-list__table {
+        height: auto !important;
+        max-height: calc(100vh - 22rem) !important;
+        overflow-y: auto !important;
+    }
+}
