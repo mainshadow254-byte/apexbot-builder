@@ -217,9 +217,10 @@
                       <block type="variables_set" id="-93lGY=!6I#8sh)~z`3Z">
                         <field name="VAR" id="ipD5?_dQ1Zkvf%v|[?DQ" variabletype="">martingale:size</field>
                         <value name="VALUE" strategy_value="size">
-                          <shadow type="math_number" id="V_wKk,@wB*OF9ev0RrZx">
-                            <field name="NUM">1</field>
-                          </shadow>
+                          <block type="text_prompt_ext">
+                            <field name="TYPE">NUMBER</field>
+                            <field name="TEXT">Martingale Multiplier (e.g. 2)</field>
+                          </block>
                         </value>
                       </block>
                     </statement>
