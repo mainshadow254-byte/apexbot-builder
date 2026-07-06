@@ -77,7 +77,7 @@ const AppWrapper = observer(() => {
         [key: string]: string;
     };
     const { clear } = summary_card;
-    const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
+    const { DASHBOARD, BOT_BUILDER, CHART } = DBOT_TABS;
     const init_render = React.useRef(true);
     const hash = [
         'dashboard',
@@ -559,7 +559,7 @@ const AppWrapper = observer(() => {
             </div>
             <DesktopWrapper>
                 <div className='main__run-strategy-wrapper'>
-                    <RunStrategy />
+                    {[BOT_BUILDER, CHART].includes(active_tab) && <RunStrategy />}
                     <RunPanel />
                 </div>
                 <ChartModal />

@@ -234,7 +234,7 @@ export function mountApexOrb() {
         function proceedBar(best) {
           const safe = best.v.score >= threshold;
           return `<button class="orb-proceed ${safe ? "" : "warn"}" id="orbProceed">${safe
-            ? "Load bot & run on " + best.name
+            ? "Load bot for " + best.name + " (opens Bot Builder)"
             : "Proceed anyway (risky) - load bot"}</button>`;
         }
 
@@ -243,22 +243,17 @@ export function mountApexOrb() {
           if (p) p.onclick = async () => {
             window.ApexOrb.lastVerdict = best;
             p.disabled = true;
-            p.textContent = "Loading bot & starting on " + best.name + "...";
+            p.textContent = "Loading bot for " + best.name + "...";
             try {
               const r = await window.apexLoadAndRun?.(best.symbol);
               if (r && r.ok) {
-                p.textContent = "Bot running on " + best.name + " - see Bot Builder";
+                p.textContent = "Loaded in Bot Builder - set your stake & press Run";
               } else {
-                var reasonText = (r && r.reason) === "not_logged_in"
-                  ? "Please log in first, then retry"
-                  : (r && r.reason) === "run_blocked"
-                    ? "Bot loaded but engine blocked the run - check Bot Builder, then retry"
-                    : "Could not start (" + ((r && r.reason) || "unknown") + ") - tap to retry";
-                p.textContent = reasonText;
+                p.textContent = "Could not load (" + ((r && r.reason) || "unknown") + ") - tap to retry";
                 p.disabled = false;
               }
             } catch (e) {
-              p.textContent = "Error starting bot - tap to retry";
+              p.textContent = "Error loading bot - tap to retry";
               p.disabled = false;
             }
           };
