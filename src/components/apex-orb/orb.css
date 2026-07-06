@@ -1,6 +1,6 @@
 /* ApexBot AI Orb */
 #apexOrb {
-  position: fixed; right: 24px; bottom: 90px; z-index: 99998;
+  position: fixed; right: 20px; bottom: 96px; z-index: 99998;
   width: 64px; height: 64px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   cursor: grab; user-select: none; touch-action: none;

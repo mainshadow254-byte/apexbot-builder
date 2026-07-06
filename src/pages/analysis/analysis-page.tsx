@@ -1,37 +1,25 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { api_base } from '@/external/bot-skeleton';
+import React, { useEffect, useMemo, useState } from 'react';
 import { initApexScanner } from '@/external/apex-scanner/apex-data-bridge';
-import {
-    digitStats,
-    evenOdd,
-    gaps,
-    honestVerdict,
-    lastDigitOf,
-    overUnder,
-    resolveDecimals,
-    riseFall,
-} from '@/external/apex-scanner/digit-analysis';
+import { digitStats, evenOdd, gaps, honestVerdict, overUnder, riseFall } from '@/external/apex-scanner/digit-analysis';
 import ManualTrade from './manual-trade';
+import { useDigitTicks } from './useDigitTicks';
 import './analysis-page.scss';
-
-const MAX_TICKS = 1000;
 
 type TSym = { symbol: string; display_name: string; market?: string };
 
 const AnalysisPage: React.FC = () => {
     const [symbols, setSymbols] = useState<TSym[]>([]);
     const [symbol, setSymbol] = useState<string>('R_10');
-    const [ready, setReady] = useState(false);
+    const { conn, version, ticks, decimals } = useDigitTicks(symbol);
+    const prices = ticks.map(t => t.quote);
+    const digits = prices.map(p => {
+        const fixed = Number(p).toFixed(decimals);
+        return +fixed[fixed.length - 1];
+    });
+    const ready = ticks.length > 0;
+    const currentPrice = prices.length ? Number(prices[prices.length - 1]).toFixed(decimals) : '-';
     const [mode, setMode] = useState<'even_odd' | 'over_under'>('even_odd');
     const [barrier, setBarrier] = useState(5);
-    const [, setVersion] = useState(0);
-
-    const pricesRef = useRef<number[]>([]);
-    const digitsRef = useRef<number[]>([]);
-    const decimalsRef = useRef<number>(2);
-    const currentPriceRef = useRef<string>('-');
-    const subRef = useRef<{ unsubscribe: () => void } | null>(null);
-    const activeSymRef = useRef<string>(symbol);
 
     useEffect(() => {
         let cancelled = false;
@@ -53,112 +41,14 @@ const AnalysisPage: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    useEffect(() => {
-        let cancelled = false;
-        activeSymRef.current = symbol;
-        setReady(false);
-        pricesRef.current = [];
-        digitsRef.current = [];
-        currentPriceRef.current = '-';
-
-        const recompute = () => {
-            const dec = decimalsRef.current;
-            digitsRef.current = pricesRef.current.map(p => lastDigitOf(p, dec));
-        };
-
-        const cleanup = () => {
-            if (subRef.current) {
-                try {
-                    subRef.current.unsubscribe();
-                } catch (e) {
-                    /* ignore */
-                }
-                subRef.current = null;
-            }
-            (api_base as any)?.api?.send?.({ forget_all: 'ticks' }).catch(() => {});
-        };
-
-        (async () => {
-            try {
-                await initApexScanner();
-                if (cancelled) return;
-
-                let pip: any = null;
-                try {
-                    const ps = (api_base as any)?.pip_sizes;
-                    pip = ps && (ps[symbol] ?? (ps.get ? ps.get(symbol) : null));
-                } catch (e) {
-                    /* ignore */
-                }
-
-                const hist = await (api_base as any).api.send({
-                    ticks_history: symbol,
-                    end: 'latest',
-                    count: MAX_TICKS,
-                    style: 'ticks',
-                });
-                if (cancelled || activeSymRef.current !== symbol) return;
-
-                const rawPrices: any[] = hist?.history?.prices || [];
-                const sampleStr = rawPrices.length ? String(rawPrices[rawPrices.length - 1]) : undefined;
-                decimalsRef.current = resolveDecimals(pip, sampleStr);
-                pricesRef.current = rawPrices.map(Number);
-                if (pricesRef.current.length) {
-                    currentPriceRef.current = Number(pricesRef.current[pricesRef.current.length - 1]).toFixed(
-                        decimalsRef.current
-                    );
-                }
-                recompute();
-                setReady(true);
-                setVersion(v => v + 1);
-
-                await (api_base as any).api.send({ ticks: symbol, subscribe: 1 });
-                if (cancelled || activeSymRef.current !== symbol) {
-                    cleanup();
-                    return;
-                }
-                const stream = (api_base as any).api.onMessage && (api_base as any).api.onMessage();
-                if (stream && stream.subscribe) {
-                    subRef.current = stream.subscribe(({ data }: any) => {
-                        if (
-                            data &&
-                            data.msg_type === 'tick' &&
-                            data.tick &&
-                            data.tick.symbol === activeSymRef.current
-                        ) {
-                            const q = Number(data.tick.quote);
-                            pricesRef.current.push(q);
-                            if (pricesRef.current.length > MAX_TICKS) pricesRef.current.shift();
-                            currentPriceRef.current = q.toFixed(decimalsRef.current);
-                            digitsRef.current.push(lastDigitOf(q, decimalsRef.current));
-                            if (digitsRef.current.length > MAX_TICKS) digitsRef.current.shift();
-                            setVersion(v => v + 1);
-                        }
-                    });
-                }
-            } catch (e) {
-                // eslint-disable-next-line no-console
-                console.error('[ApexAnalysis] subscribe failed:', e);
-            }
-        })();
-
-        return () => {
-            cancelled = true;
-            cleanup();
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [symbol]);
-
-    const digits = digitsRef.current;
-    const prices = pricesRef.current;
     const latestDigit = digits.length ? digits[digits.length - 1] : null;
 
-    const stats = useMemo(() => digitStats(digits), [digits.length, latestDigit]);
-    const eo = useMemo(() => evenOdd(digits), [digits.length, latestDigit]);
-    const ou = useMemo(() => overUnder(digits, barrier), [digits.length, latestDigit, barrier]);
-    const rf = useMemo(() => riseFall(prices), [prices.length, prices[prices.length - 1]]);
-    const gp = useMemo(() => gaps(digits), [digits.length, latestDigit]);
-    const verdict = useMemo(() => honestVerdict(digits, prices), [digits.length, latestDigit]);
+    const stats = useMemo(() => digitStats(digits), [version]);
+    const eo = useMemo(() => evenOdd(digits), [version]);
+    const ou = useMemo(() => overUnder(digits, barrier), [version, barrier]);
+    const rf = useMemo(() => riseFall(prices), [version]);
+    const gp = useMemo(() => gaps(digits), [version]);
+    const verdict = useMemo(() => honestVerdict(digits, prices), [version]);
 
     const ringColor = (d: number) => {
         if (stats.highest && d === stats.highest.digit) return '#2fe38b';
@@ -175,7 +65,7 @@ const AnalysisPage: React.FC = () => {
         <div className='apex-analysis'>
             <div className='apex-analysis__topbar'>
                 <div className='apex-analysis__price'>
-                    {currentPriceRef.current}
+                    {currentPrice}
                     <small>CURRENT PRICE</small>
                 </div>
                 <div className='apex-analysis__market'>
@@ -186,6 +76,17 @@ const AnalysisPage: React.FC = () => {
                             </option>
                         ))}
                     </select>
+                    <span className={`apex-analysis__conn apex-analysis__conn--${conn}`}>
+                        {conn === 'live'
+                            ? '● LIVE'
+                            : conn === 'connecting'
+                              ? '○ CONNECTING'
+                              : conn === 'reconnecting'
+                                ? '◌ RECONNECTING'
+                                : conn === 'stale'
+                                  ? '● STALE'
+                                  : '● DISCONNECTED'}
+                    </span>
                     <span>MARKET</span>
                 </div>
             </div>
@@ -412,7 +313,7 @@ const AnalysisPage: React.FC = () => {
                             </div>
                             <div className='apex-analysis__stat'>
                                 <span>Pip Size (decimals)</span>
-                                <span className='v'>{decimalsRef.current}</span>
+                                <span className='v'>{decimals}</span>
                             </div>
                         </div>
                     </div>
