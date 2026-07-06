@@ -198,6 +198,11 @@ export function mountApexOrb() {
           const safe = v.score >= threshold;
           const dir = v.direction === "CALL" ? "RISE" : "FALL";
           const m = v.metrics || {};
+          var label = (v.color && v.color.label) || "";
+          var badgeClass = (label === "PRIME" || label === "SAFE") ? "safe"
+              : (label === "WAIT" || v.wait) ? "wait" : "risky";
+          var badgeText = (label === "PRIME" || label === "SAFE") ? "SAFE ENTRY"
+              : (label === "WAIT" || v.wait) ? "WAIT - MIXED SIGNALS" : "RISKY";
           function esc(s) {
             return String(s ?? "").replace(/[&<>"']/g, (ch) => ({
               "&": "&amp;",
@@ -219,9 +224,10 @@ export function mountApexOrb() {
           if (sel.tradeType === "Rise / Fall" && sel.direction) {
             const agree = (sel.direction === "RISE" && v.direction === "CALL") ||
                           (sel.direction === "FALL" && v.direction === "PUT");
-            align = `<div class="orb-align ${agree ? "ok" : "no"}">${agree
+            const cleanAgree = agree && !v.wait && v.contradictions === 0;
+            align = `<div class="orb-align ${cleanAgree ? "ok" : "no"}">${cleanAgree
               ? "AI agrees with your " + sel.direction
-              : "AI signal is " + dir + ", opposite your " + sel.direction}</div>`;
+              : (agree ? "AI sees mixed signals - consider waiting." : "AI signal is " + dir + ", opposite your " + sel.direction)}</div>`;
           }
 
           var reasonsHtml = "";
@@ -265,7 +271,7 @@ export function mountApexOrb() {
               </div>
               <div class="orb-vrow">
                 <span class="orb-pill" style="background:${v.color.css}22;color:${v.color.css}">${v.color.label}</span>
-                <span class="orb-assure ${safe ? "safe" : "risky"}">${safe ? "SAFE ENTRY" : "RISKY"}</span>
+                <span class="orb-assure ${badgeClass}">${badgeText}</span>
               </div>
               <div class="orb-vdir">AI signal: <b>${dir}</b> - Confidence ${v.confidence}</div>
               ${align}

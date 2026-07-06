@@ -75,6 +75,7 @@
 .orb-pill{padding:3px 10px;border-radius:12px;font-size:.72rem;font-weight:700}
 .orb-assure{font-size:.75rem;font-weight:800}
 .orb-assure.safe{color:#2fe38b}.orb-assure.risky{color:#ffb547}
+.orb-assure.wait{background:rgba(255,181,71,0.18);color:#ffb547}
 .orb-vdir{font-size:.8rem;color:#cdd6e5;margin-bottom:6px}
 .orb-align{font-size:.76rem;font-weight:700;padding:5px 8px;border-radius:7px;margin-bottom:6px}
 .orb-align.ok{background:#2fe38b18;color:#2fe38b}
