@@ -1,0 +1,94 @@
+.apex-hybrid {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2.4rem;
+    height: 100%;
+    overflow-y: auto;
+
+    &__intro {
+        margin-bottom: 2rem;
+    }
+
+    &__grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 1.4rem;
+    }
+
+    &__card {
+        position: relative;
+        background: var(--general-section-1, #fff);
+        border: 1px solid var(--border-normal, #e6e9f0);
+        border-radius: 14px;
+        padding: 1.4rem 1.4rem 1.6rem;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 4px 14px rgba(20, 40, 80, 0.06);
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    &__card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 22px rgba(20, 40, 80, 0.12);
+    }
+
+    &__card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: linear-gradient(90deg, #3d8bff, #2fe3c0);
+    }
+
+    &__name {
+        font-size: 1.15rem;
+        font-weight: 800;
+        margin: 0.4rem 0 0.6rem;
+        background: linear-gradient(90deg, #2b4bff, #6a3dff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    &__tag {
+        display: inline-block;
+        font-size: 0.6rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #3d8bff;
+        border: 1px solid #3d8bff55;
+        border-radius: 20px;
+        padding: 2px 8px;
+        margin-bottom: 0.6rem;
+    }
+
+    &__desc {
+        font-size: 0.85rem;
+        color: var(--text-less-prominent, #6b7280);
+        line-height: 1.45;
+        flex-grow: 1;
+        margin-bottom: 1.2rem;
+    }
+
+    &__load {
+        width: 100%;
+        padding: 0.85rem;
+        border: none;
+        border-radius: 9px;
+        background: linear-gradient(90deg, #2b6bff, #2b4bff);
+        color: #fff;
+        font-weight: 800;
+        font-size: 0.95rem;
+        cursor: pointer;
+        letter-spacing: 0.03em;
+    }
+
+    &__load:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+}
