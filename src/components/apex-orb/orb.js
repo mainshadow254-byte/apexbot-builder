@@ -198,6 +198,23 @@ export function mountApexOrb() {
           const safe = v.score >= threshold;
           const dir = v.direction === "CALL" ? "RISE" : "FALL";
           const m = v.metrics || {};
+          function esc(s) {
+            return String(s ?? "").replace(/[&<>"']/g, (ch) => ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[ch]);
+          }
+          function tag(cond, up, down, neutral) {
+            if (cond === true) return '<span class="orb-ind__tag orb-ind__tag--up">' + up + '</span>';
+            if (cond === false) return '<span class="orb-ind__tag orb-ind__tag--down">' + down + '</span>';
+            return '<span class="orb-ind__tag orb-ind__tag--flat">' + (neutral || 'neutral') + '</span>';
+          }
+          function fmt(n, d) {
+            return (n === undefined || n === null || isNaN(n)) ? '-' : Number(n).toFixed(d === undefined ? 2 : d);
+          }
           let align = "";
           if (sel.tradeType === "Rise / Fall" && sel.direction) {
             const agree = (sel.direction === "RISE" && v.direction === "CALL") ||
@@ -206,6 +223,38 @@ export function mountApexOrb() {
               ? "AI agrees with your " + sel.direction
               : "AI signal is " + dir + ", opposite your " + sel.direction}</div>`;
           }
+
+          var reasonsHtml = "";
+          if (v.reasons && v.reasons.length) {
+            reasonsHtml =
+              '<div class="orb-reasoning">' +
+              '<div class="orb-reasoning__title">WHY THIS ENTRY</div>' +
+              '<ul class="orb-reasoning__list">' +
+              v.reasons.map(function (r) {
+                return '<li>' + esc(r && typeof r === "object" ? r.txt : r) + '</li>';
+              }).join('') +
+              '</ul></div>';
+          }
+
+          var rsiState = m.rsi < 30 ? true : m.rsi > 70 ? false : null;
+          var priceVsEma = (m.price != null && m.ema20 != null) ? (m.price > m.ema20) : null;
+          var emaTrend = (m.ema20 != null && m.ema50 != null) ? (m.ema20 > m.ema50) : null;
+          var macdState = (m.macdHist != null) ? (m.macdHist > 0) : null;
+          var adxStrong = (m.adx != null) ? (m.adx >= 25) : null;
+
+          var indicatorsHtml =
+            '<div class="orb-ind">' +
+            '<div class="orb-reasoning__title">INDICATORS USED</div>' +
+            '<div class="orb-ind__grid">' +
+              '<div class="orb-ind__row"><span>RSI</span><b>' + fmt(m.rsi) + '</b>' + tag(rsiState, 'oversold', 'overbought', 'neutral') + '</div>' +
+              '<div class="orb-ind__row"><span>ADX</span><b>' + fmt(m.adx) + '</b>' + tag(adxStrong, 'strong trend', 'weak trend', '') + '</div>' +
+              '<div class="orb-ind__row"><span>MACD hist</span><b>' + fmt(m.macdHist, 4) + '</b>' + tag(macdState, 'bullish', 'bearish', '') + '</div>' +
+              '<div class="orb-ind__row"><span>Price vs EMA20</span><b>' + fmt(m.price) + '</b>' + tag(priceVsEma, 'above', 'below', '') + '</div>' +
+              '<div class="orb-ind__row"><span>EMA20 vs EMA50</span><b>' + fmt(m.ema20) + '</b>' + tag(emaTrend, 'uptrend', 'downtrend', '') + '</div>' +
+              '<div class="orb-ind__row"><span>Stoch</span><b>' + fmt(m.stoch) + '</b>' + tag(m.stoch < 20 ? true : m.stoch > 80 ? false : null, 'oversold', 'overbought', 'neutral') + '</div>' +
+            '</div>' +
+            '<div class="orb-ind__note">These indicators apply to price-direction (Rise/Fall) signals. Digit contracts are RNG-based - see the Analysis tab for digit statistics.</div>' +
+            '</div>';
 
           return `
             <div class="orb-vcard ${isBest ? "best" : ""}">
@@ -221,6 +270,8 @@ export function mountApexOrb() {
               <div class="orb-vdir">AI signal: <b>${dir}</b> - Confidence ${v.confidence}</div>
               ${align}
               ${v.volatilityWarning?.active ? `<div class="orb-vol">Volatility ${v.volatilityWarning.level} (ATR ${v.volatilityWarning.pct.toFixed(2)}%)</div>` : ""}
+              ${reasonsHtml}
+              ${indicatorsHtml}
               <div class="orb-vmetrics">
                 <span>RSI ${m.rsi?.toFixed(0) ?? "-"}</span>
                 <span>ADX ${m.adx?.toFixed(0) ?? "-"}</span>
