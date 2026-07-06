@@ -171,6 +171,7 @@
             align-items: flex-start;
             height: var(--tab-content-height);
             flex-grow: 1;
+            min-width: 0;
             background: var(--general-main-1);
             overflow: hidden;
             position: relative;
@@ -313,6 +314,8 @@
             &--active {
                 display: block;
                 width: 30%;
+                flex-shrink: 0;
+                min-width: 28rem;
             }
         }
 

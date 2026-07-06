@@ -41,6 +41,7 @@ import RunPanel from '../../components/run-panel';
 import ChartModal from '../chart/chart-modal';
 import Dashboard from '../dashboard';
 import PlaceholderPage from '../placeholder/placeholder-page';
+import TradingBotsPage from '../trading-bots/trading-bots-page';
 import ApexOrbMount from '@/components/apex-orb/ApexOrbMount';
 import RunStrategy from '../dashboard/run-strategy';
 import './main.scss';
@@ -489,7 +490,7 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-trading-bots'
                             >
-                                <PlaceholderPage title='Trading Bots' />
+                                <TradingBotsPage />
                             </div>
                             <div
                                 label={
