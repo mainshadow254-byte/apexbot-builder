@@ -1,0 +1,28 @@
+.apex-journal {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2.4rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    &__intro { margin-bottom: 1.4rem; flex: 0 0 auto; }
+
+    &__subtabs { display: flex; gap: 0.6rem; margin-bottom: 1.4rem; flex: 0 0 auto; }
+    &__subtabs button {
+        border: 1px solid var(--border-normal); background: var(--general-main-1);
+        color: var(--text-general); border-radius: 9px; padding: 0.7rem 1.4rem;
+        font-weight: 700; cursor: pointer;
+    }
+    &__subtabs button.active { background: #3d8bff; color: #fff; border-color: #3d8bff; }
+
+    &__body {
+        flex: 1 1 auto; min-height: 0; position: relative;
+        border: 1px solid var(--border-normal); border-radius: 12px;
+        overflow: auto; background: var(--general-section-1);
+    }
+    .run-panel-tab__content, .run-panel-tab__content--journal { height: 100% !important; max-height: 100% !important; }
+    .journal, .transactions { height: 100%; }
+}

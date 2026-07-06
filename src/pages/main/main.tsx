@@ -44,6 +44,7 @@ import PlaceholderPage from '../placeholder/placeholder-page';
 import TradingBotsPage from '../trading-bots/trading-bots-page';
 import AnalysisPage from '../analysis/analysis-page';
 import HybridBotsPage from '../hybrid-bots/hybrid-bots-page';
+import JournalPage from '../journal/journal-page';
 import ApexOrbMount from '@/components/apex-orb/ApexOrbMount';
 import RunStrategy from '../dashboard/run-strategy';
 import './main.scss';
@@ -553,7 +554,7 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-journal'
                             >
-                                <PlaceholderPage title='Journal' />
+                                <JournalPage />
                             </div>
                         </Tabs>
                         {!isDesktop && right_tab_shadow && <span className='tabs-shadow tabs-shadow--right' />}{' '}
