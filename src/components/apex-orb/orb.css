@@ -109,3 +109,19 @@
 .orb-ind__tag--down { background: rgba(255,93,115,0.18); color: #ff5d73; }
 .orb-ind__tag--flat { background: rgba(160,179,209,0.15); color: #9fb3d1; }
 .orb-ind__note { font-size: 10px; color: #8a9ab5; margin-top: 8px; line-height: 1.4; border-left: 2px solid #ffb547; padding-left: 8px; }
+
+@media (max-width: 1279px) {
+    #apexOrb { bottom: 124px; right: 16px; }        /* float above the drawer bar */
+    #apexOrbPanel {
+        right: 12px;
+        left: 12px;
+        width: auto;
+        max-width: none;
+        bottom: 196px;
+        max-height: 62vh;
+    }
+}
+@media (max-width: 600px) {
+    #apexOrbPanel { bottom: 188px; max-height: 58vh; }
+    .orb-ind__row { grid-template-columns: 1.1fr 0.7fr auto; font-size: 11px; }
+}

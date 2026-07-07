@@ -343,3 +343,51 @@
         color: #ff5d73;
     }
 }
+
+@media (max-width: 1279px) {
+    .apex-analysis {
+        padding: 1.4rem 1.2rem 12rem;
+        max-width: none;
+    }
+
+    .apex-analysis__topbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .apex-analysis__market {
+        align-items: stretch;
+    }
+
+    .apex-analysis__market select {
+        width: 100%;
+        min-height: 44px;
+    }
+
+    .apex-analysis__rank,
+    .apex-analysis__bars,
+    .apex-analysis__stats {
+        grid-template-columns: 1fr;
+    }
+
+    .apex-analysis__toggle {
+        justify-content: stretch;
+    }
+
+    .apex-analysis__toggle button {
+        flex: 1 1 0;
+        min-height: 44px;
+    }
+
+    .apex-analysis__barrier button {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+@media (min-width: 601px) and (max-width: 1279px) {
+    .apex-analysis__rank,
+    .apex-analysis__stats {
+        grid-template-columns: 1fr 1fr;
+    }
+}

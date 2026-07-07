@@ -27,3 +27,20 @@
     .run-panel-tab__content, .run-panel-tab__content--journal { height: 100% !important; max-height: 100% !important; }
     .journal, .transactions { height: 100%; }
 }
+
+@media (max-width: 1279px) {
+    .apex-journal {
+        padding: 1.4rem 1.2rem;
+    }
+    .apex-journal__subtabs {
+        gap: 0.5rem;
+    }
+    .apex-journal__subtabs button {
+        flex: 1 1 0;                  /* two equal full-width tabs */
+        min-height: 44px;
+        padding: 0.7rem 0.6rem;
+    }
+    .apex-journal__body {
+        padding-bottom: 11rem;        /* clears the drawer bar so rows aren't hidden */
+    }
+}

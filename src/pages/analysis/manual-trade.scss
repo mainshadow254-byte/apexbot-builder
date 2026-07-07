@@ -214,3 +214,46 @@
         border-radius: 6px;
     }
 }
+
+@media (max-width: 1279px) {
+    .apex-manual {
+        padding: 1.4rem;
+    }
+
+    .apex-manual__types,
+    .apex-manual__preview,
+    .apex-manual__monitor {
+        grid-template-columns: 1fr;
+    }
+
+    .apex-manual__types button,
+    .apex-manual__digits button,
+    .apex-manual__buy {
+        min-height: 44px;
+    }
+
+    .apex-manual__row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .apex-manual__field {
+        width: 100%;
+    }
+
+    .apex-manual__field input,
+    .apex-manual__buy {
+        width: 100%;
+    }
+}
+
+@media (min-width: 601px) and (max-width: 1279px) {
+    .apex-manual__types,
+    .apex-manual__monitor {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .apex-manual__preview {
+        grid-template-columns: 1fr 1fr;
+    }
+}

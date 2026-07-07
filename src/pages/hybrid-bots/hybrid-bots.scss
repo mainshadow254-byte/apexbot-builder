@@ -106,3 +106,21 @@
         margin-bottom: 1rem;
     }
 }
+
+@media (max-width: 1279px) {
+    .apex-hybrid {
+        padding: 1.4rem 1.2rem 12rem; /* 12rem bottom = clears the run-panel drawer bar */
+    }
+    .apex-hybrid__grid {
+        grid-template-columns: 1fr;   /* single column on phones/tablets */
+        gap: 1.2rem;
+    }
+    .apex-hybrid__load {
+        width: 100%;
+        min-height: 44px;             /* touch target */
+    }
+    .apex-hybrid__empty {
+        margin-top: 1.5rem;
+        padding: 3rem 1.4rem;
+    }
+}
