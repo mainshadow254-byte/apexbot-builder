@@ -119,6 +119,9 @@ const ApexOrbMount: React.FC = () => {
         return () => {
             cancelled = true;
             delete (window as any).apexLoadAndRun;
+            delete (window as any).ApexOrb;
+            document.getElementById('apexOrb')?.remove();
+            document.getElementById('apexOrbPanel')?.remove();
         };
     }, [load_modal, dashboard]);
 

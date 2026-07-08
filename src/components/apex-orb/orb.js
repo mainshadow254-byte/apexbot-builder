@@ -3,7 +3,13 @@ export function mountApexOrb() {
   const POS_KEY = "apex_orb_pos";
 
   function buildOrb() {
-    if (document.getElementById("apexOrb")) return;
+    // Idempotent: if a stale orb/panel exists (e.g. after a re-mount where the
+    // globals were lost), remove it and rebuild so window.ApexOrb + handlers are
+    // always freshly registered. Prevents "orb visible but window.ApexOrb undefined".
+    const staleOrb = document.getElementById("apexOrb");
+    const stalePanel = document.getElementById("apexOrbPanel");
+    if (staleOrb) staleOrb.remove();
+    if (stalePanel) stalePanel.remove();
 
     // The orb
     const orb = document.createElement("div");
