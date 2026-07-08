@@ -36,9 +36,10 @@ const ApexOrbMount: React.FC = () => {
 
         // Loads the scanned bot INTO Bot Builder and STOPS.
         // The user sets stake and presses Run manually - the orb never auto-runs.
-        (window as any).apexLoadAndRun = async (symbol: string, tradeType?: string) => {
+        (window as any).apexLoadAndRun = async (symbol: string, tradeType?: string, direction?: string) => {
             try {
                 const selectedTradeType = tradeType || (window as any).ApexOrb?.selection?.tradeType;
+                const selectedDirection = direction || (window as any).ApexOrb?.selection?.direction;
                 dashboard.setActiveTab(DBOT_TABS.BOT_BUILDER);
 
                 const ready = await waitForWorkspace();
@@ -47,7 +48,11 @@ const ApexOrbMount: React.FC = () => {
                     return { ok: false, reason: 'workspace_not_ready' };
                 }
 
-                const botUrl = BOT_URLS[selectedTradeType as string] || '/apex-bots/rise_fall.xml';
+                let botUrl = BOT_URLS[selectedTradeType as string] || '/apex-bots/rise_fall.xml';
+                if (selectedTradeType === 'Rise / Fall') {
+                    if (selectedDirection === 'RISE') botUrl = '/apex-bots/rise.xml';
+                    else if (selectedDirection === 'FALL') botUrl = '/apex-bots/fall.xml';
+                }
                 const res = await fetch(botUrl);
                 if (!res.ok) {
                     console.error('[ApexRun] Failed to fetch bot XML:', res.status);

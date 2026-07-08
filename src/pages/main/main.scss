@@ -8,6 +8,24 @@
     }
 }
 
+#id-copy-trading {
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+    box-sizing: border-box;
+
+    > div {
+        width: 100%;
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 2.4rem;
+        box-sizing: border-box;
+        position: relative;
+        inset-inline-start: 0;
+        transform: none;
+    }
+}
+
 .tabs-shadow {
     position: absolute;
     top: 8px;

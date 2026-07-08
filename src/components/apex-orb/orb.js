@@ -340,7 +340,8 @@ export function mountApexOrb() {
             p.textContent = "Loading bot for " + best.name + "...";
             try {
               const tradeType = best.tradeType || sel.tradeType || window.ApexOrb?.selection?.tradeType;
-              const r = await window.apexLoadAndRun?.(best.symbol, tradeType);
+              const direction = best.direction || sel.direction || window.ApexOrb?.selection?.direction;
+              const r = await window.apexLoadAndRun?.(best.symbol, tradeType, direction);
               if (r && r.ok) {
                 p.textContent = "Loaded in Bot Builder - set your stake & press Run";
               } else {
@@ -396,7 +397,13 @@ export function mountApexOrb() {
             }
             const safe = v.score >= threshold;
             let html = `<div class="orb-rtitle">Scan result</div>` + verdictCard(v, sel.symbolName, false);
-            const chosen = { symbol: sel.symbol, name: sel.symbolName, tradeType: sel.tradeType, v };
+            const chosen = {
+              symbol: sel.symbol,
+              name: sel.symbolName,
+              tradeType: sel.tradeType,
+              direction: sel.direction,
+              v
+            };
 
             if (!safe) {
               const alts = symbols().filter(s => s.market === sel.category && s.exchange_is_open !== 0 && s.symbol !== sel.symbol).slice(0, 8);
