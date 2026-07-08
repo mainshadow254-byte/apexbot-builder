@@ -111,6 +111,15 @@
 .orb-ind__note { font-size: 10px; color: #8a9ab5; margin-top: 8px; line-height: 1.4; border-left: 2px solid #ffb547; padding-left: 8px; }
 .orb-closed { line-height: 1.5; }
 .orb-closed span { display: block; margin-top: 6px; font-size: 11px; color: #9fb3d1; }
+.orb-dig__splits { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin: 8px 0; }
+.orb-dig__split { background: rgba(255,255,255,0.04); border-radius: 6px; padding: 6px; text-align: center; }
+.orb-dig__split span { display: block; font-size: 9px; color: #9fb3d1; text-transform: uppercase; letter-spacing: 0.05em; }
+.orb-dig__split b { font-size: 15px; color: #fff; }
+.orb-dig__chart { display: flex; align-items: flex-end; gap: 3px; height: 70px; margin: 10px 0 4px; padding: 0 2px; }
+.orb-dig__bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; position: relative; }
+.orb-dig__fill { width: 70%; background: linear-gradient(180deg,#3d8bff,#2fe38b); border-radius: 3px 3px 0 0; min-height: 2px; }
+.orb-dig__num { font-size: 10px; color: #cddcf3; margin-top: 3px; }
+.orb-dig__pct { font-size: 8px; color: #8a9ab5; }
 
 @media (max-width: 1279px) {
     #apexOrb { bottom: 124px; right: 16px; }        /* float above the drawer bar */

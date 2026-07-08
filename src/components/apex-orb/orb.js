@@ -204,6 +204,7 @@ export function mountApexOrb() {
           const safe = v.score >= threshold;
           const dir = v.direction === "CALL" ? "RISE" : "FALL";
           const m = v.metrics || {};
+          var isDigit = sel.tradeType === "Even / Odd" || sel.tradeType === "Over / Under" || sel.tradeType === "Matches / Differs";
           var label = (v.color && v.color.label) || "";
           var badgeClass = (label === "PRIME" || label === "SAFE") ? "safe"
               : (label === "WAIT" || v.wait) ? "wait" : "risky";
@@ -268,6 +269,37 @@ export function mountApexOrb() {
             '<div class="orb-ind__note">These indicators apply to price-direction (Rise/Fall) signals. Digit contracts are RNG-based - see the Analysis tab for digit statistics.</div>' +
             '</div>';
 
+          var digitHtml = "";
+          if (v.digit && v.digit.distribution) {
+            var d = v.digit;
+            var total = d.distribution.reduce(function(a, b) { return a + b; }, 0) || 1;
+            var even = 0, odd = 0, over = 0, under = 0;
+            for (var i = 0; i < 10; i++) {
+              if (i % 2 === 0) even += d.distribution[i]; else odd += d.distribution[i];
+              if (i > 5) over += d.distribution[i]; else if (i < 5) under += d.distribution[i];
+            }
+            var maxCount = Math.max.apply(null, d.distribution);
+            var bars = "";
+            for (var j = 0; j < 10; j++) {
+              var pct = Math.round((d.distribution[j] / total) * 100);
+              var h = maxCount ? Math.round((d.distribution[j] / maxCount) * 100) : 0;
+              bars += '<div class="orb-dig__bar"><div class="orb-dig__fill" style="height:' + h + '%"></div>'
+                   + '<span class="orb-dig__num">' + j + '</span><span class="orb-dig__pct">' + pct + '%</span></div>';
+            }
+            digitHtml =
+              '<div class="orb-reasoning">' +
+              '<div class="orb-reasoning__title">DIGIT STATISTICS (last ' + total + ' ticks)</div>' +
+              '<div class="orb-dig__splits">' +
+                '<div class="orb-dig__split"><span>Even</span><b>' + Math.round(even / total * 100) + '%</b></div>' +
+                '<div class="orb-dig__split"><span>Odd</span><b>' + Math.round(odd / total * 100) + '%</b></div>' +
+                '<div class="orb-dig__split"><span>Over 5</span><b>' + Math.round(over / total * 100) + '%</b></div>' +
+                '<div class="orb-dig__split"><span>Under 5</span><b>' + Math.round(under / total * 100) + '%</b></div>' +
+              '</div>' +
+              '<div class="orb-dig__chart">' + bars + '</div>' +
+              '<div class="orb-ind__note">Warning: Digit contracts are RNG (random). This is the OBSERVED distribution of recent ticks - it does NOT predict the next digit. Past frequency has no bearing on future digits. Trade digits for fun/strategy, never as a sure thing.</div>' +
+              '</div>';
+          }
+
           return `
             <div class="orb-vcard ${isBest ? "best" : ""}">
               ${isBest ? '<div class="orb-badge">BEST ENTRY</div>' : ""}
@@ -279,18 +311,17 @@ export function mountApexOrb() {
                 <span class="orb-pill" style="background:${v.color.css}22;color:${v.color.css}">${v.color.label}</span>
                 <span class="orb-assure ${badgeClass}">${badgeText}</span>
               </div>
-              <div class="orb-vdir">AI signal: <b>${dir}</b> - Confidence ${v.confidence}</div>
+              <div class="orb-vdir">${isDigit ? esc(sel.tradeType || "Digit scan") + " - digit statistics scan" : "AI signal: <b>" + dir + "</b> - Confidence " + v.confidence}</div>
               ${align}
               ${v.volatilityWarning?.active ? `<div class="orb-vol">Volatility ${v.volatilityWarning.level} (ATR ${v.volatilityWarning.pct.toFixed(2)}%)</div>` : ""}
-              ${reasonsHtml}
-              ${indicatorsHtml}
-              <div class="orb-vmetrics">
+              ${isDigit ? digitHtml : reasonsHtml + indicatorsHtml}
+              ${isDigit ? "" : `<div class="orb-vmetrics">
                 <span>RSI ${m.rsi?.toFixed(0) ?? "-"}</span>
                 <span>ADX ${m.adx?.toFixed(0) ?? "-"}</span>
                 <span>MACD ${m.macdHist > 0 ? "+" : ""}${m.macdHist?.toFixed(4) ?? "-"}</span>
                 <span>Stoch ${m.stoch?.toFixed(0) ?? "-"}</span>
-              </div>
-              ${v.digit ? `<div class="orb-digit">${v.digit.reason || ""}</div>` : ""}
+              </div>`}
+              ${isDigit ? "" : (v.digit ? `<div class="orb-digit">${v.digit.reason || ""}</div>` : "")}
             </div>`;
         }
 
