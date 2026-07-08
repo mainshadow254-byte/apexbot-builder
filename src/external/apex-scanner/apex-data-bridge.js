@@ -72,6 +72,13 @@ async function getCandles(symbol, { granularity = CANDLE_GRANULARITY, count = CA
 
 async function apexScan(symbol) {
     const r = await getCandles(symbol, { count: CANDLE_COUNT });
+
+    // Guard: no candles = market closed or no data available (forex/commodities
+    // close on weekends/off-hours; synthetics are 24/7 and always return data).
+    if (!r || !r.candles || r.candles.length === 0) {
+        return { noData: true, symbol };
+    }
+
     let higher = null;
     try {
         const h = await getCandles(symbol, { granularity: HIGHER_TF_GRANULARITY, count: HIGHER_TF_COUNT });

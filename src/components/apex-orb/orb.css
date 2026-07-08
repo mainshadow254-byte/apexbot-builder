@@ -109,6 +109,8 @@
 .orb-ind__tag--down { background: rgba(255,93,115,0.18); color: #ff5d73; }
 .orb-ind__tag--flat { background: rgba(160,179,209,0.15); color: #9fb3d1; }
 .orb-ind__note { font-size: 10px; color: #8a9ab5; margin-top: 8px; line-height: 1.4; border-left: 2px solid #ffb547; padding-left: 8px; }
+.orb-closed { line-height: 1.5; }
+.orb-closed span { display: block; margin-top: 6px; font-size: 11px; color: #9fb3d1; }
 
 @media (max-width: 1279px) {
     #apexOrb { bottom: 124px; right: 16px; }        /* float above the drawer bar */

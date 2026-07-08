@@ -331,6 +331,7 @@ export function mountApexOrb() {
               result.innerHTML = `<div class="orb-progress">Scanning ${i + 1}/${markets.length}... <b>${markets[i].display_name}</b></div>`;
               try {
                 const v = await window.apexScan(markets[i].symbol);
+                if (v && v.noData) continue;
                 scored.push({ symbol: markets[i].symbol, name: markets[i].display_name, v });
               } catch (e) {}
               await new Promise(r => setTimeout(r, 120));
@@ -347,7 +348,20 @@ export function mountApexOrb() {
             }
           } else {
             result.innerHTML = `<div class="orb-progress">Scanning ${sel.symbolName}...</div>`;
+            var selSym = symbols().find(function (s) { return s.symbol === sel.symbol; });
+            if (selSym && selSym.exchange_is_open === 0) {
+              result.innerHTML = '<div class="orb-progress orb-closed">Market closed: <b>' + (sel.symbolName || sel.symbol) +
+                '</b> is currently closed.<br><span>Forex and commodities close on weekends and off-hours. Try a Synthetic index (open 24/7), or scan when the market reopens.</span></div>';
+              scanBtn.disabled = false;
+              return;
+            }
             const v = await window.apexScan(sel.symbol);
+            if (v && v.noData) {
+              result.innerHTML = '<div class="orb-progress orb-closed">No live data for <b>' + (sel.symbolName || sel.symbol) +
+                '</b> right now.<br><span>The market may be closed. Synthetics are available 24/7.</span></div>';
+              scanBtn.disabled = false;
+              return;
+            }
             const safe = v.score >= threshold;
             let html = `<div class="orb-rtitle">Scan result</div>` + verdictCard(v, sel.symbolName, false);
             const chosen = { symbol: sel.symbol, name: sel.symbolName, tradeType: sel.tradeType, v };
@@ -359,6 +373,7 @@ export function mountApexOrb() {
                 result.innerHTML = html + `<div class="orb-progress">Chosen market looks risky - checking alternatives ${i + 1}/${alts.length}...</div>`;
                 try {
                   const av = await window.apexScan(alts[i].symbol);
+                  if (av && av.noData) continue;
                   scored.push({ symbol: alts[i].symbol, name: alts[i].display_name, v: av });
                 } catch (e) {}
                 await new Promise(r => setTimeout(r, 120));
