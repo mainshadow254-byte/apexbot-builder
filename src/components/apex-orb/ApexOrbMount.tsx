@@ -8,8 +8,8 @@ import './orb.css';
 const BOT_URLS: Record<string, string> = {
     'Rise / Fall': '/apex-bots/rise_fall.xml',
     'Even / Odd': '/apex-bots/even_odd.xml',
-    'Over / Under': '/apex-bots/rise_fall.xml',
-    'Matches / Differs': '/apex-bots/rise_fall.xml',
+    'Over / Under': '/apex-bots/over_under.xml',
+    'Matches / Differs': '/apex-bots/matches_differs.xml',
 };
 
 const ApexOrbMount: React.FC = () => {
