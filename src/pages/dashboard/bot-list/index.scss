@@ -381,11 +381,14 @@
     }
 
     &__table {
-        height: calc(100vh - 57rem);
+        height: auto;
+        max-height: calc(100vh - 38rem);
+        min-height: 20rem;
         overflow: auto;
 
         @include mobile-screen {
-            height: calc(100vh - 55rem);
+            max-height: calc(100vh - 34rem);
+            min-height: 16rem;
         }
     }
 

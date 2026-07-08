@@ -1,12 +1,15 @@
 // Updated to use brand configuration for footer elements visibility
 // Controls language settings and theme toggle via brand.config.json
+import { useState } from 'react';
 import brandConfig from '@/../brand.config.json';
 import { useApiBase } from '@/hooks/useApiBase';
 import useModalManager from '@/hooks/useModalManager';
 import { getActiveTabUrl } from '@/utils/getActiveTabUrl';
 import { FILTERED_LANGUAGES } from '@/utils/languages';
+import { LegacyAnnouncementIcon, LegacyReportsIcon, LegacyWhatsappIcon } from '@deriv/quill-icons/Legacy';
 import { useTranslations } from '@deriv-com/translations';
 import { DesktopLanguagesModal } from '@deriv-com/ui';
+import AccountLimitsModal from './AccountLimitsModal';
 import ChangeTheme from './ChangeTheme';
 import FullScreen from './FullScreen';
 import LanguageSettings from './LanguageSettings';
@@ -16,6 +19,7 @@ import ServerTime from './ServerTime';
 import './footer.scss';
 
 const Footer = () => {
+    const [showLimits, setShowLimits] = useState(false);
     const { currentLang = 'EN', localize, switchLanguage } = useTranslations();
     const { hideModal, isModalOpenFor, showModal } = useModalManager();
     const { isAuthorized } = useApiBase();
@@ -48,6 +52,35 @@ const Footer = () => {
             <ServerTime />
             <div className='app-footer__vertical-line' />
             <NetworkStatus />
+            <div className='app-footer__vertical-line' />
+            <a
+                className='app-footer__link'
+                href='https://chat.whatsapp.com/B7Qohivjhf9IsLecrbnCBa'
+                target='_blank'
+                rel='noopener noreferrer'
+                title='WhatsApp Support'
+            >
+                <LegacyWhatsappIcon iconSize='xs' fill='var(--text-general)' />
+            </a>
+            <div className='app-footer__vertical-line' />
+            <a
+                className='app-footer__link'
+                href='https://deriv.com/responsible/'
+                target='_blank'
+                rel='noopener noreferrer'
+                title='Responsible Trading'
+            >
+                <LegacyAnnouncementIcon iconSize='xs' fill='var(--text-general)' />
+            </a>
+            <div className='app-footer__vertical-line' />
+            <button
+                className='app-footer__link'
+                type='button'
+                onClick={() => setShowLimits(true)}
+                title='Account Limits'
+            >
+                <LegacyReportsIcon iconSize='xs' fill='var(--text-general)' />
+            </button>
 
             {/* [AI] Only show language modal if language settings are enabled */}
             {enableLanguageSettings && isModalOpenFor('DesktopLanguagesModal') && (
@@ -73,6 +106,7 @@ const Footer = () => {
                 />
             )}
             {/* [/AI] */}
+            {showLimits && isAuthorized && <AccountLimitsModal onClose={() => setShowLimits(false)} />}
         </footer>
     );
 };

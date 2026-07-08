@@ -76,6 +76,22 @@
             text-decoration: underline;
         }
     }
+
+    &__link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 8px;
+        height: 100%;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-general);
+
+        &:hover {
+            opacity: 0.7;
+        }
+    }
 }
 
 .languages-modal__body {

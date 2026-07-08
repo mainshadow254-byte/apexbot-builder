@@ -183,7 +183,7 @@
             }
 
             @include desktop-screen {
-                padding: 80px 216px 0;
+                padding: 80px 80px 0;
             }
 
             @include mobile-or-tablet-screen {
@@ -312,12 +312,15 @@
             display: none;
             height: calc(100vh - 16.7rem);
             overflow-y: auto;
+            overflow-x: hidden;
+            word-wrap: break-word;
 
             &--active {
                 display: block;
                 width: 30%;
                 flex-shrink: 0;
                 min-width: 28rem;
+                max-width: 40rem;
             }
         }
 
