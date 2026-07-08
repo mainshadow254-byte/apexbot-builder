@@ -308,7 +308,7 @@ export function mountApexOrb() {
             p.disabled = true;
             p.textContent = "Loading bot for " + best.name + "...";
             try {
-              const r = await window.apexLoadAndRun?.(best.symbol, window.ApexOrb.selection?.tradeType);
+              const r = await window.apexLoadAndRun?.(best.symbol, sel.tradeType);
               if (r && r.ok) {
                 p.textContent = "Loaded in Bot Builder - set your stake & press Run";
               } else {
