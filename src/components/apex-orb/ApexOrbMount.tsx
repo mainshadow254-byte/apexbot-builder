@@ -38,6 +38,7 @@ const ApexOrbMount: React.FC = () => {
         // The user sets stake and presses Run manually - the orb never auto-runs.
         (window as any).apexLoadAndRun = async (symbol: string, tradeType?: string) => {
             try {
+                const selectedTradeType = tradeType || (window as any).ApexOrb?.selection?.tradeType;
                 dashboard.setActiveTab(DBOT_TABS.BOT_BUILDER);
 
                 const ready = await waitForWorkspace();
@@ -46,7 +47,7 @@ const ApexOrbMount: React.FC = () => {
                     return { ok: false, reason: 'workspace_not_ready' };
                 }
 
-                const botUrl = BOT_URLS[tradeType as string] || '/apex-bots/rise_fall.xml';
+                const botUrl = BOT_URLS[selectedTradeType as string] || '/apex-bots/rise_fall.xml';
                 const res = await fetch(botUrl);
                 if (!res.ok) {
                     console.error('[ApexRun] Failed to fetch bot XML:', res.status);
@@ -65,7 +66,7 @@ const ApexOrbMount: React.FC = () => {
                 // Digit contracts (Even/Odd, Over/Under, Matches/Differs) only exist on
                 // synthetic/volatility indices. Never inject a non-synthetic symbol into them.
                 const DIGIT_TRADE_TYPES = ['Even / Odd', 'Over / Under', 'Matches / Differs'];
-                const isDigitBot = DIGIT_TRADE_TYPES.includes(tradeType as string);
+                const isDigitBot = DIGIT_TRADE_TYPES.includes(selectedTradeType as string);
 
                 const info = lookupSymbol(symbol);
 
