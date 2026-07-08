@@ -8,7 +8,7 @@ const LOG_LINES = [
     'Checking risk controls…',
     'Syncing market interface…',
     'Calibrating signal engine…',
-    'Ready to launch.',
+    'Awaiting access code…',
 ];
 
 const MARKET_CARDS = [
@@ -20,6 +20,8 @@ const MARKET_CARDS = [
 ];
 
 const SESSION_KEY = 'apex_launch_seen';
+const ACCESS_PIN = '1960';
+const PIN_LENGTH = 4;
 const DURATION = 4200;
 
 const reducedMotion = () =>
@@ -35,12 +37,16 @@ const ApexLaunch = () => {
             return true;
         }
     });
+    const [phase, setPhase] = useState<'boot' | 'pin'>('boot');
     const [closing, setClosing] = useState(false);
     const [progress, setProgress] = useState(0);
     const [logIdx, setLogIdx] = useState(0);
+    const [pin, setPin] = useState('');
+    const [error, setError] = useState(false);
     const rafRef = useRef<number | undefined>(undefined);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const doneRef = useRef(false);
+    const bootDoneRef = useRef(false);
 
     const finish = useCallback(() => {
         if (doneRef.current) return;
@@ -54,9 +60,17 @@ const ApexLaunch = () => {
         window.setTimeout(() => setMounted(false), 650);
     }, []);
 
+    const enterPinPhase = useCallback(() => {
+        if (bootDoneRef.current) return;
+        bootDoneRef.current = true;
+        setProgress(100);
+        setLogIdx(LOG_LINES.length - 1);
+        setPhase('pin');
+    }, []);
+
     useEffect(() => {
-        if (!mounted) return;
-        const dur = reducedMotion() ? 900 : DURATION;
+        if (!mounted || phase !== 'boot') return;
+        const dur = reducedMotion() ? 700 : DURATION;
         const start = performance.now();
         const tick = (now: number) => {
             const t = Math.min(1, (now - start) / dur);
@@ -64,13 +78,58 @@ const ApexLaunch = () => {
             setProgress(Math.round(eased * 100));
             setLogIdx(Math.min(LOG_LINES.length - 1, Math.floor(t * LOG_LINES.length)));
             if (t < 1) rafRef.current = requestAnimationFrame(tick);
-            else finish();
+            else enterPinPhase();
         };
         rafRef.current = requestAnimationFrame(tick);
         return () => {
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
         };
-    }, [mounted, finish]);
+    }, [mounted, phase, enterPinPhase]);
+
+    const submitPin = useCallback(
+        (value: string) => {
+            if (value === ACCESS_PIN) {
+                setError(false);
+                finish();
+            } else {
+                setError(true);
+                window.setTimeout(() => {
+                    setPin('');
+                    setError(false);
+                }, 620);
+            }
+        },
+        [finish]
+    );
+
+    const pushDigit = useCallback(
+        (d: string) => {
+            setError(false);
+            setPin(prev => {
+                if (prev.length >= PIN_LENGTH) return prev;
+                const next = prev + d;
+                if (next.length === PIN_LENGTH) window.setTimeout(() => submitPin(next), 120);
+                return next;
+            });
+        },
+        [submitPin]
+    );
+
+    const backspace = useCallback(() => {
+        setError(false);
+        setPin(prev => prev.slice(0, -1));
+    }, []);
+
+    useEffect(() => {
+        if (!mounted || phase !== 'pin') return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key >= '0' && e.key <= '9') pushDigit(e.key);
+            else if (e.key === 'Backspace') backspace();
+            else if (e.key === 'Enter' && pin.length === PIN_LENGTH) submitPin(pin);
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [mounted, phase, pin, pushDigit, backspace, submitPin]);
 
     useEffect(() => {
         if (!mounted || reducedMotion()) return;
@@ -98,7 +157,7 @@ const ApexLaunch = () => {
             base = Math.max(h * 0.3, Math.min(h * 0.8, base));
             pts.push(base);
         }
-        let phase = 0;
+        let ph = 0;
 
         const onResize = () => {
             w = canvas.width = canvas.offsetWidth * dpr;
@@ -121,11 +180,11 @@ const ApexLaunch = () => {
                 ctx.fillStyle = `rgba(47,227,255,${p.a})`;
                 ctx.fill();
             });
-            phase += 0.01;
+            ph += 0.01;
             ctx.beginPath();
             const step = w / (pts.length - 1);
             pts.forEach((y, i) => {
-                const yy = y + Math.sin(phase + i * 0.3) * 3 * dpr;
+                const yy = y + Math.sin(ph + i * 0.3) * 3 * dpr;
                 if (i === 0) ctx.moveTo(0, yy);
                 else ctx.lineTo(i * step, yy);
             });
@@ -151,6 +210,8 @@ const ApexLaunch = () => {
 
     if (!mounted) return null;
 
+    const isPin = phase === 'pin';
+
     return (
         <div
             className={`apex-launch${closing ? ' apex-launch--closing' : ''}`}
@@ -161,9 +222,11 @@ const ApexLaunch = () => {
             <canvas ref={canvasRef} className='apex-launch__canvas' />
             <div className='apex-launch__grid' />
 
-            <button type='button' className='apex-launch__skip' onClick={finish}>
-                Skip →
-            </button>
+            {!isPin && (
+                <button type='button' className='apex-launch__skip' onClick={enterPinPhase}>
+                    Skip →
+                </button>
+            )}
 
             <div className='apex-launch__brand'>
                 <span className='apex-launch__brand-mark'>A</span>
@@ -193,11 +256,17 @@ const ApexLaunch = () => {
                         }}
                     >
                         <div className='apex-launch__core-inner'>
-                            <div className='apex-launch__pct'>
-                                {progress}
-                                <i>%</i>
-                            </div>
-                            <div className='apex-launch__core-label'>APEX CORE</div>
+                            {!isPin ? (
+                                <>
+                                    <div className='apex-launch__pct'>
+                                        {progress}
+                                        <i>%</i>
+                                    </div>
+                                    <div className='apex-launch__core-label'>APEX CORE</div>
+                                </>
+                            ) : (
+                                <div className='apex-launch__lock'>🔒</div>
+                            )}
                         </div>
                     </div>
                     <div className='apex-launch__pulse' />
@@ -205,25 +274,60 @@ const ApexLaunch = () => {
                 </div>
             </div>
 
-            <div className='apex-launch__terminal'>
-                <div className='apex-launch__terminal-bar'>
-                    <span />
-                    <span />
-                    <span />
-                    <em>apex-engine</em>
-                </div>
-                <div className='apex-launch__log'>
-                    {LOG_LINES.slice(0, logIdx + 1).map((l, i) => (
-                        <div key={i} className={`apex-launch__log-line${i === logIdx ? ' is-active' : ''}`}>
-                            <b>›</b> {l}
+            {!isPin ? (
+                <>
+                    <div className='apex-launch__terminal'>
+                        <div className='apex-launch__terminal-bar'>
+                            <span />
+                            <span />
+                            <span />
+                            <em>apex-engine</em>
                         </div>
-                    ))}
+                        <div className='apex-launch__log'>
+                            {LOG_LINES.slice(0, logIdx + 1).map((l, i) => (
+                                <div
+                                    key={i}
+                                    className={`apex-launch__log-line${i === logIdx ? ' is-active' : ''}`}
+                                >
+                                    <b>›</b> {l}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className='apex-launch__bar'>
+                        <div className='apex-launch__bar-fill' style={{ width: `${progress}%` }} />
+                    </div>
+                </>
+            ) : (
+                <div className={`apex-launch__pinbox${error ? ' apex-launch__pinbox--err' : ''}`}>
+                    <div className='apex-launch__pin-title'>ENTER ACCESS CODE</div>
+                    <div className='apex-launch__pin-dots'>
+                        {Array.from({ length: PIN_LENGTH }).map((_, i) => (
+                            <span key={i} className={`apex-launch__pin-dot${i < pin.length ? ' is-filled' : ''}`} />
+                        ))}
+                    </div>
+                    <div className='apex-launch__pin-msg'>{error ? 'Incorrect code — try again' : '\u00A0'}</div>
+                    <div className='apex-launch__keypad'>
+                        {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(d => (
+                            <button key={d} type='button' className='apex-launch__key' onClick={() => pushDigit(d)}>
+                                {d}
+                            </button>
+                        ))}
+                        <span className='apex-launch__key apex-launch__key--ghost' />
+                        <button type='button' className='apex-launch__key' onClick={() => pushDigit('0')}>
+                            0
+                        </button>
+                        <button
+                            type='button'
+                            className='apex-launch__key apex-launch__key--del'
+                            onClick={backspace}
+                            aria-label='Delete'
+                        >
+                            ⌫
+                        </button>
+                    </div>
                 </div>
-            </div>
-
-            <div className='apex-launch__bar'>
-                <div className='apex-launch__bar-fill' style={{ width: `${progress}%` }} />
-            </div>
+            )}
         </div>
     );
 };

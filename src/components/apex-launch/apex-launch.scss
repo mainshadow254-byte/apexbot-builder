@@ -407,3 +407,140 @@
         display: none;
     }
 }
+
+.apex-launch {
+    &__lock {
+        font-size: 44px;
+        filter: drop-shadow(0 0 14px rgba(47, 227, 255, 0.7));
+    }
+
+    &__pinbox {
+        position: relative;
+        z-index: 3;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        width: min(320px, 90vw);
+        animation: apex-pin-in 0.5s ease both;
+
+        &--err .apex-launch__pin-dots {
+            animation: apex-shake 0.5s ease;
+        }
+    }
+
+    &__pin-title {
+        font-size: 12px;
+        letter-spacing: 0.28em;
+        color: #7fd0ff;
+    }
+
+    &__pin-dots {
+        display: flex;
+        gap: 14px;
+    }
+
+    &__pin-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 1px solid rgba(47, 227, 255, 0.5);
+        background: transparent;
+        transition: all 0.15s ease;
+
+        &.is-filled {
+            background: #2fe3ff;
+            box-shadow: 0 0 12px rgba(47, 227, 255, 0.8);
+        }
+    }
+
+    &__pin-msg {
+        font-size: 11px;
+        min-height: 14px;
+        color: #ff6b6b;
+        letter-spacing: 0.04em;
+    }
+
+    &__keypad {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        width: 100%;
+    }
+
+    &__key {
+        height: 56px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(12, 24, 38, 0.55);
+        backdrop-filter: blur(10px);
+        color: #eaf6ff;
+        font-size: 20px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+
+        &:hover {
+            border-color: #2fe3ff;
+            box-shadow: 0 0 16px rgba(47, 227, 255, 0.35);
+        }
+
+        &:active {
+            transform: scale(0.94);
+        }
+
+        &--ghost {
+            background: none;
+            border: none;
+            cursor: default;
+            box-shadow: none;
+        }
+
+        &--del {
+            font-size: 18px;
+            color: #ffc64d;
+        }
+    }
+}
+
+@keyframes apex-pin-in {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes apex-shake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    20% {
+        transform: translateX(-8px);
+    }
+
+    40% {
+        transform: translateX(8px);
+    }
+
+    60% {
+        transform: translateX(-6px);
+    }
+
+    80% {
+        transform: translateX(6px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .apex-launch__pinbox,
+    .apex-launch__pinbox--err .apex-launch__pin-dots {
+        animation: none !important;
+    }
+}
