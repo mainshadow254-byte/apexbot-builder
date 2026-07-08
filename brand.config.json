@@ -3,7 +3,7 @@
     "brand_domain": "derivsignalhub.com",
     "brand_hostname": {
         "staging": "staging-bot.derivsignalhub.com/dashboard",
-        "production": "bot.derivsignalhub.com/dashboard"
+        "production": "derivsignalhub.com/dashboard"
     },
     "domain_name": "derivsignalhub.com",
     "colors": {
@@ -94,7 +94,7 @@
         },
         "hostname": {
             "production": {
-                "com": "bot.derivsignalhub.com"
+                "com": "derivsignalhub.com"
             },
             "staging": {
                 "com": "staging-bot.derivsignalhub.com"

@@ -1,1 +1,8 @@
 RedirectMatch 404 ^/apex-bots/(1_3_2_6|accumulators_dalembert|accumulators_martingale|accumulators_reverse_martingale|dalembert|dalembert_max-stake|martingale_max-stake|oscars_grind|oscars_grind_max-stake|reverse_dalembert|reverse_martingale)\.xml$
+
+Options -MultiViews
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+RewriteRule ^ index.html [L]
