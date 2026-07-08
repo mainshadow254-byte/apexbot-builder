@@ -70,7 +70,42 @@ async function getCandles(symbol, { granularity = CANDLE_GRANULARITY, count = CA
     return resp; // resp.candles = [{ epoch, open, high, low, close }]
 }
 
-async function apexScan(symbol) {
+async function ensureDigits(symbol, minTicks = 25, timeoutMs = 6000) {
+    if (currentTickSymbol !== symbol || !window._digits || window._digits.length === 0) {
+        try {
+            await subscribeDigits(symbol);
+        } catch (e) {
+            /* ignore */
+        }
+    }
+
+    const start = Date.now();
+    while ((window._digits ? window._digits.length : 0) < minTicks) {
+        if (Date.now() - start > timeoutMs) break;
+        await new Promise(r => setTimeout(r, 200));
+    }
+
+    if ((window._digits ? window._digits.length : 0) < minTicks) {
+        try {
+            const r = await apiSend({
+                ticks_history: symbol,
+                style: 'ticks',
+                count: minTicks,
+                end: 'latest',
+                adjust_start_time: 1,
+            });
+            const prices = r && r.history && Array.isArray(r.history.prices) ? r.history.prices : [];
+            if (prices.length) {
+                window._digits = prices.concat(window._digits || []).slice(-100);
+            }
+        } catch (e) {
+            /* ignore */
+        }
+    }
+    return window._digits || [];
+}
+
+async function apexScan(symbol, tradeType) {
     const r = await getCandles(symbol, { count: CANDLE_COUNT });
 
     // Guard: no candles = market closed or no data available (forex/commodities
@@ -79,6 +114,12 @@ async function apexScan(symbol) {
         return { noData: true, symbol };
     }
 
+    const DIGIT_TYPES = ['Even / Odd', 'Over / Under', 'Matches / Differs'];
+    const isDigit = DIGIT_TYPES.includes(tradeType);
+    const digits = isDigit
+        ? await ensureDigits(symbol)
+        : (symbol === currentTickSymbol ? window._digits || [] : []);
+
     let higher = null;
     try {
         const h = await getCandles(symbol, { granularity: HIGHER_TF_GRANULARITY, count: HIGHER_TF_COUNT });
@@ -86,7 +127,6 @@ async function apexScan(symbol) {
     } catch (e) {
         /* higher timeframe optional */
     }
-    const digits = symbol === currentTickSymbol ? window._digits || [] : [];
     return analyze(r.candles, analyzeDigits(digits), higher);
 }
 

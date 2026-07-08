@@ -378,7 +378,8 @@ export function mountApexOrb() {
               wireProceed(scored[0]);
             }
           } else {
-            result.innerHTML = `<div class="orb-progress">Scanning ${sel.symbolName}...</div>`;
+            var isDigitScan = sel.tradeType === "Even / Odd" || sel.tradeType === "Over / Under" || sel.tradeType === "Matches / Differs";
+            result.innerHTML = `<div class="orb-progress">${isDigitScan ? "Collecting live ticks for digit statistics" : "Scanning"} ${sel.symbolName}...</div>`;
             var selSym = symbols().find(function (s) { return s.symbol === sel.symbol; });
             if (selSym && selSym.exchange_is_open === 0) {
               result.innerHTML = '<div class="orb-progress orb-closed">Market closed: <b>' + (sel.symbolName || sel.symbol) +
@@ -386,7 +387,7 @@ export function mountApexOrb() {
               scanBtn.disabled = false;
               return;
             }
-            const v = await window.apexScan(sel.symbol);
+            const v = await window.apexScan(sel.symbol, sel.tradeType);
             if (v && v.noData) {
               result.innerHTML = '<div class="orb-progress orb-closed">No live data for <b>' + (sel.symbolName || sel.symbol) +
                 '</b> right now.<br><span>The market may be closed. Synthetics are available 24/7.</span></div>';
