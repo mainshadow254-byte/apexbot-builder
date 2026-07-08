@@ -5,7 +5,12 @@ import { useStore } from '@/hooks/useStore';
 import { DBOT_TABS } from '@/constants/bot-contents';
 import './orb.css';
 
-const RISE_FALL_BOT_URL = '/apex-bots/rise_fall.xml';
+const BOT_URLS: Record<string, string> = {
+    'Rise / Fall': '/apex-bots/rise_fall.xml',
+    'Even / Odd': '/apex-bots/even_odd.xml',
+    'Over / Under': '/apex-bots/rise_fall.xml',
+    'Matches / Differs': '/apex-bots/rise_fall.xml',
+};
 
 const ApexOrbMount: React.FC = () => {
     const { load_modal, dashboard } = useStore();
@@ -31,7 +36,7 @@ const ApexOrbMount: React.FC = () => {
 
         // Loads the scanned bot INTO Bot Builder and STOPS.
         // The user sets stake and presses Run manually - the orb never auto-runs.
-        (window as any).apexLoadAndRun = async (symbol: string) => {
+        (window as any).apexLoadAndRun = async (symbol: string, tradeType?: string) => {
             try {
                 dashboard.setActiveTab(DBOT_TABS.BOT_BUILDER);
 
@@ -41,7 +46,8 @@ const ApexOrbMount: React.FC = () => {
                     return { ok: false, reason: 'workspace_not_ready' };
                 }
 
-                const res = await fetch(RISE_FALL_BOT_URL);
+                const botUrl = BOT_URLS[tradeType as string] || '/apex-bots/rise_fall.xml';
+                const res = await fetch(botUrl);
                 if (!res.ok) {
                     console.error('[ApexRun] Failed to fetch bot XML:', res.status);
                     return { ok: false, reason: 'xml_fetch_failed' };
