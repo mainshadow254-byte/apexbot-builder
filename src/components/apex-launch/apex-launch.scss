@@ -390,6 +390,10 @@
     .apex-launch__card-label {
         font-size: 11px;
     }
+
+    .apex-launch__card:nth-child(5) {
+        left: 0;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
