@@ -54,7 +54,6 @@ const ApexOrbMount: React.FC = () => {
                 }
                 let xmlString = await res.text();
 
-                const info = lookupSymbol(symbol);
                 const doc = new DOMParser().parseFromString(xmlString, 'application/xml');
                 const setField = (name: string, value?: string) => {
                     if (!value) return;
@@ -62,12 +61,30 @@ const ApexOrbMount: React.FC = () => {
                         el.textContent = value;
                     });
                 };
-                if (info) {
-                    setField('MARKET_LIST', info.market);
-                    setField('SUBMARKET_LIST', info.submarket);
-                    setField('SYMBOL_LIST', info.symbol);
+
+                // Digit contracts (Even/Odd, Over/Under, Matches/Differs) only exist on
+                // synthetic/volatility indices. Never inject a non-synthetic symbol into them.
+                const DIGIT_TRADE_TYPES = ['Even / Odd', 'Over / Under', 'Matches / Differs'];
+                const isDigitBot = DIGIT_TRADE_TYPES.includes(tradeType as string);
+
+                const info = lookupSymbol(symbol);
+
+                if (isDigitBot) {
+                    // Only inject the scanned symbol if it is genuinely a synthetic index.
+                    // Otherwise leave the template's default synthetic (R_100) untouched.
+                    if (info && info.market === 'synthetic_index') {
+                        setField('MARKET_LIST', info.market);
+                        setField('SUBMARKET_LIST', info.submarket);
+                        setField('SYMBOL_LIST', info.symbol);
+                    }
                 } else {
-                    setField('SYMBOL_LIST', symbol);
+                    if (info) {
+                        setField('MARKET_LIST', info.market);
+                        setField('SUBMARKET_LIST', info.submarket);
+                        setField('SYMBOL_LIST', info.symbol);
+                    } else {
+                        setField('SYMBOL_LIST', symbol);
+                    }
                 }
                 xmlString = new XMLSerializer().serializeToString(doc);
 
