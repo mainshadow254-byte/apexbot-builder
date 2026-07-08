@@ -4,6 +4,7 @@ import Text from '@/components/shared_ui/text';
 import Journal from '@/components/journal';
 import Transactions from '@/components/transactions';
 import { Localize } from '@deriv-com/translations';
+import DisciplineGuard from './discipline-guard';
 import './journal-page.scss';
 
 const JournalPage = observer(() => {
@@ -18,6 +19,7 @@ const JournalPage = observer(() => {
                     <Localize i18n_default_text='Your full trade history and bot activity log.' />
                 </Text>
             </div>
+            <DisciplineGuard />
             <div className='apex-journal__subtabs'>
                 <button className={tab === 'transactions' ? 'active' : ''} onClick={() => setTab('transactions')}>
                     <Localize i18n_default_text='Transactions' />
