@@ -121,6 +121,21 @@
 
         flex-direction: column;
 
+        .run-panel__loss-alarm {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-top: 1.2rem;
+            color: var(--text-general);
+            font-size: var(--text-size-xs);
+            font-weight: bold;
+            cursor: pointer;
+
+            input {
+                cursor: pointer;
+            }
+        }
+
         &-button {
             width: 318px;
             height: 32px !important;

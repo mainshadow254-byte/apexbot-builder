@@ -51,7 +51,9 @@ type TDrawerContent = {
 
 type TDrawerFooter = {
     is_clear_stat_disabled: boolean;
+    is_loss_alarm_enabled: boolean;
     onClearStatClick: () => void;
+    toggleLossAlarm: () => void;
 };
 
 type TStatisticsInfoModal = {
@@ -162,8 +164,19 @@ const DrawerContent = ({ active_index, is_drawer_open, active_tour, setActiveTab
     );
 };
 
-const DrawerFooter = ({ is_clear_stat_disabled, onClearStatClick }: TDrawerFooter) => (
+const DrawerFooter = ({
+    is_clear_stat_disabled,
+    is_loss_alarm_enabled,
+    onClearStatClick,
+    toggleLossAlarm,
+}: TDrawerFooter) => (
     <div className='run-panel__footer'>
+        <label className='run-panel__loss-alarm'>
+            <input type='checkbox' checked={is_loss_alarm_enabled} onChange={toggleLossAlarm} />
+            <span>
+                <Localize i18n_default_text='Loss alarm' />
+            </span>
+        </label>
         <Button
             id='db-run-panel__clear-button'
             className='run-panel__footer-button'
@@ -254,6 +267,7 @@ const RunPanel = observer(() => {
     const {
         active_index,
         is_drawer_open,
+        is_loss_alarm_enabled,
         is_statistics_info_modal_open,
         is_clear_stat_disabled,
         onClearStatClick,
@@ -262,6 +276,7 @@ const RunPanel = observer(() => {
         onUnmount,
         setActiveTabIndex,
         toggleDrawer,
+        toggleLossAlarm,
         toggleStatisticsInfoModal,
     } = run_panel;
     const { statistics } = transactions;
@@ -299,7 +314,14 @@ const RunPanel = observer(() => {
         />
     );
 
-    const footer = <DrawerFooter is_clear_stat_disabled={is_clear_stat_disabled} onClearStatClick={onClearStatClick} />;
+    const footer = (
+        <DrawerFooter
+            is_clear_stat_disabled={is_clear_stat_disabled}
+            is_loss_alarm_enabled={is_loss_alarm_enabled}
+            onClearStatClick={onClearStatClick}
+            toggleLossAlarm={toggleLossAlarm}
+        />
+    );
 
     const header = (
         <DrawerHeader

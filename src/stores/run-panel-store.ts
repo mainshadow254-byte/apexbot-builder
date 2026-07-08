@@ -41,6 +41,7 @@ export default class RunPanelStore {
             is_statistics_info_modal_open: observable,
             is_drawer_open: observable,
             is_dialog_open: observable,
+            is_loss_alarm_enabled: observable,
             is_sell_requested: observable,
             run_id: observable,
             error_type: observable,
@@ -49,6 +50,7 @@ export default class RunPanelStore {
             is_stop_button_disabled: computed,
             is_clear_stat_disabled: computed,
             toggleDrawer: action,
+            toggleLossAlarm: action,
             onBotSellEvent: action,
             setContractStage: action,
             setHasOpenContract: action,
@@ -105,9 +107,11 @@ export default class RunPanelStore {
     is_statistics_info_modal_open = false;
     is_drawer_open = true;
     is_dialog_open = false;
+    is_loss_alarm_enabled = localStorage.getItem('apex_loss_alarm_enabled') !== 'false';
     is_sell_requested = false;
     show_bot_stop_message = false;
     is_contract_buying_in_progress = false;
+    loss_alarm_contracts = new Set<number>();
 
     run_id = '';
     onOkButtonClick: (() => void) | null = null;
@@ -300,6 +304,39 @@ export default class RunPanelStore {
 
     toggleDrawer = (is_open: boolean) => {
         this.is_drawer_open = is_open;
+    };
+
+    toggleLossAlarm = () => {
+        this.is_loss_alarm_enabled = !this.is_loss_alarm_enabled;
+        localStorage.setItem('apex_loss_alarm_enabled', String(this.is_loss_alarm_enabled));
+    };
+
+    playLossAlarm = () => {
+        if (!this.is_loss_alarm_enabled) return;
+
+        try {
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            if (!AudioContextClass) return;
+
+            const audio_context = new AudioContextClass();
+            const oscillator = audio_context.createOscillator();
+            const gain = audio_context.createGain();
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, audio_context.currentTime);
+            oscillator.frequency.setValueAtTime(660, audio_context.currentTime + 0.12);
+            gain.gain.setValueAtTime(0.001, audio_context.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.22, audio_context.currentTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, audio_context.currentTime + 0.32);
+
+            oscillator.connect(gain);
+            gain.connect(audio_context.destination);
+            oscillator.start();
+            oscillator.stop(audio_context.currentTime + 0.34);
+            oscillator.onended = () => audio_context.close();
+        } catch {
+            // Browsers can block audio in some contexts; never let sound affect bot execution.
+        }
     };
 
     setActiveTabIndex = (index: number) => {
@@ -625,10 +662,22 @@ export default class RunPanelStore {
         observer.emit('statistics.clear');
     };
 
-    onBotContractEvent = (data: { is_sold?: boolean }) => {
+    onBotContractEvent = (data: { contract_id?: number; is_sold?: boolean; profit?: number }) => {
         if (data?.is_sold) {
             this.is_sell_requested = false;
             this.setContractStage(contract_stages.CONTRACT_CLOSED);
+
+            const contract_id = data.contract_id;
+            const profit = Number(data.profit);
+            const is_new_loss =
+                Number.isFinite(profit) &&
+                profit < 0 &&
+                (!contract_id || !this.loss_alarm_contracts.has(contract_id));
+
+            if (is_new_loss) {
+                if (contract_id) this.loss_alarm_contracts.add(contract_id);
+                this.playLossAlarm();
+            }
         }
     };
 
