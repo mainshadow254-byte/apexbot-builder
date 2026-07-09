@@ -38,8 +38,12 @@ const ApexOrbMount: React.FC = () => {
         // The user sets stake and presses Run manually - the orb never auto-runs.
         (window as any).apexLoadAndRun = async (symbol: string, tradeType?: string, direction?: string) => {
             try {
-                const selectedTradeType = tradeType || (window as any).ApexOrb?.selection?.tradeType;
-                const selectedDirection = direction || (window as any).ApexOrb?.selection?.direction;
+                const selectedTradeType = (tradeType || (window as any).ApexOrb?.selection?.tradeType || '').trim();
+                const selectedDirection = (
+                    direction ||
+                    (window as any).ApexOrb?.selection?.direction ||
+                    ''
+                ).toUpperCase();
                 dashboard.setActiveTab(DBOT_TABS.BOT_BUILDER);
 
                 const ready = await waitForWorkspace();
@@ -53,7 +57,7 @@ const ApexOrbMount: React.FC = () => {
                     if (selectedDirection === 'RISE') botUrl = '/apex-bots/rise.xml';
                     else if (selectedDirection === 'FALL') botUrl = '/apex-bots/fall.xml';
                 }
-                const res = await fetch(botUrl);
+                const res = await fetch(botUrl, { cache: 'no-store' });
                 if (!res.ok) {
                     console.error('[ApexRun] Failed to fetch bot XML:', res.status);
                     return { ok: false, reason: 'xml_fetch_failed' };
@@ -67,6 +71,16 @@ const ApexOrbMount: React.FC = () => {
                         el.textContent = value;
                     });
                 };
+
+                // Reassert the direction in the parsed XML so a stale or malformed
+                // directional template can never fall back to "Both" during import.
+                if (selectedTradeType === 'Rise / Fall' && ['RISE', 'FALL'].includes(selectedDirection)) {
+                    const contractType = selectedDirection === 'RISE' ? 'CALL' : 'PUT';
+                    setField('TRADETYPECAT_LIST', 'callput');
+                    setField('TRADETYPE_LIST', 'callput');
+                    setField('TYPE_LIST', contractType);
+                    setField('PURCHASE_LIST', contractType);
+                }
 
                 // Digit contracts (Even/Odd, Over/Under, Matches/Differs) only exist on
                 // synthetic/volatility indices. Never inject a non-synthetic symbol into them.
