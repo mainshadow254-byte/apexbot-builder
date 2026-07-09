@@ -6,10 +6,16 @@ import { useApiBase } from '@/hooks/useApiBase';
 import useModalManager from '@/hooks/useModalManager';
 import { getActiveTabUrl } from '@/utils/getActiveTabUrl';
 import { FILTERED_LANGUAGES } from '@/utils/languages';
-import { LegacyAnnouncementIcon, LegacyReportsIcon, LegacyWhatsappIcon } from '@deriv/quill-icons/Legacy';
+import {
+    LegacyAnnouncementIcon,
+    LegacyReportsIcon,
+    LegacySettings1pxIcon,
+    LegacyWhatsappIcon,
+} from '@deriv/quill-icons/Legacy';
 import { useTranslations } from '@deriv-com/translations';
 import { DesktopLanguagesModal } from '@deriv-com/ui';
 import AccountLimitsModal from './AccountLimitsModal';
+import BotSettingsModal from './BotSettingsModal';
 import ChangeTheme from './ChangeTheme';
 import FullScreen from './FullScreen';
 import LanguageSettings from './LanguageSettings';
@@ -20,6 +26,7 @@ import './footer.scss';
 
 const Footer = () => {
     const [showLimits, setShowLimits] = useState(false);
+    const [showBotSettings, setShowBotSettings] = useState(false);
     const { currentLang = 'EN', localize, switchLanguage } = useTranslations();
     const { hideModal, isModalOpenFor, showModal } = useModalManager();
     const { isAuthorized } = useApiBase();
@@ -81,6 +88,15 @@ const Footer = () => {
             >
                 <LegacyReportsIcon iconSize='xs' fill='var(--text-general)' />
             </button>
+            <div className='app-footer__vertical-line' />
+            <button
+                className='app-footer__link'
+                type='button'
+                onClick={() => setShowBotSettings(true)}
+                title='Bot Settings'
+            >
+                <LegacySettings1pxIcon iconSize='xs' fill='var(--text-general)' />
+            </button>
 
             {/* [AI] Only show language modal if language settings are enabled */}
             {enableLanguageSettings && isModalOpenFor('DesktopLanguagesModal') && (
@@ -107,6 +123,7 @@ const Footer = () => {
             )}
             {/* [/AI] */}
             {showLimits && isAuthorized && <AccountLimitsModal onClose={() => setShowLimits(false)} />}
+            {showBotSettings && <BotSettingsModal onClose={() => setShowBotSettings(false)} />}
         </footer>
     );
 };

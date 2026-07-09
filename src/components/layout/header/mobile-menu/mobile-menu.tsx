@@ -8,8 +8,10 @@ import { useStore } from '@/hooks/useStore';
 // [/AI]
 import { getActiveTabUrl } from '@/utils/getActiveTabUrl';
 import { FILTERED_LANGUAGES } from '@/utils/languages';
+import { LegacySettings1pxIcon } from '@deriv/quill-icons/Legacy';
 import { useTranslations } from '@deriv-com/translations';
 import { Drawer, MobileLanguagesDrawer, useDevice } from '@deriv-com/ui';
+import BotSettingsModal from './../../footer/BotSettingsModal';
 import NetworkStatus from './../../footer/NetworkStatus';
 import ServerTime from './../../footer/ServerTime';
 import BackButton from './back-button';
@@ -29,6 +31,7 @@ type TMobileMenuProps = {
 const MobileMenu = ({ onLogout }: TMobileMenuProps) => {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
+    const [showBotSettings, setShowBotSettings] = useState(false);
     const { currentLang = 'EN', localize, switchLanguage } = useTranslations();
     const { hideModal, isModalOpenFor, showModal } = useModalManager();
     const { isDesktop } = useDevice();
@@ -126,8 +129,17 @@ const MobileMenu = ({ onLogout }: TMobileMenuProps) => {
                 <Drawer.Footer className='mobile-menu__footer'>
                     <ServerTime />
                     <NetworkStatus />
+                    <button
+                        className='app-footer__link'
+                        type='button'
+                        onClick={() => setShowBotSettings(true)}
+                        title='Bot Settings'
+                    >
+                        <LegacySettings1pxIcon iconSize='xs' fill='var(--text-general)' />
+                    </button>
                 </Drawer.Footer>
             </Drawer>
+            {showBotSettings && <BotSettingsModal onClose={() => setShowBotSettings(false)} />}
         </div>
     );
 };
