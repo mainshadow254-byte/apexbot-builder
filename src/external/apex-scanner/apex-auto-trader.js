@@ -135,6 +135,18 @@ function getMarkets(settings) {
         .slice(0, 20);
 }
 
+async function fetchDigitDistribution(symbol, count = 40) {
+    const response = await api_base.api.send({
+        ticks_history: symbol,
+        style: 'ticks',
+        count,
+        end: 'latest',
+        adjust_start_time: 1,
+    });
+    const prices = response?.history?.prices || [];
+    return analyzeDigits(prices);
+}
+
 async function findEntry(settings) {
     if (typeof window.apexScan !== 'function') {
         emit({ type: 'tradeError', message: 'Scanner is not ready yet. Please wait a moment and try again.' });
@@ -148,26 +160,6 @@ async function findEntry(settings) {
         return null;
     }
 
-    const scored = [];
-    for (let i = 0; i < markets.length; i++) {
-        if (!state.running) return null;
-        emit({ type: 'scanning', index: i + 1, total: markets.length, name: markets[i].display_name });
-        try {
-            const v = await window.apexScan(markets[i].symbol, settings.tradeType);
-            if (v && !v.noData) {
-                scored.push({ symbol: markets[i].symbol, name: markets[i].display_name, v });
-            }
-        } catch (e) {
-            /* ignore individual market failures */
-        }
-        await new Promise(resolve => setTimeout(resolve, 120));
-    }
-
-    if (!scored.length) {
-        emit({ type: 'noEntry', bestConfidence: 0, threshold: settings.safeMode ? 75 : 60 });
-        return null;
-    }
-
     if (isDigit) {
         if (settings.tradeType !== 'Over / Under') {
             emit({
@@ -178,15 +170,21 @@ async function findEntry(settings) {
         }
 
         const rows = [];
-        for (const item of scored) {
-            const dist =
-                item.v?.digit?.distribution ||
-                (typeof analyzeDigits === 'function' ? analyzeDigits(window._digits || [])?.distribution : null);
-            if (!dist) continue;
-            const totalTicks = dist.reduce((sum, count) => sum + count, 0);
-            if (totalTicks < 20) continue;
-            const overUnder = scoreOverUnder(dist, totalTicks);
-            rows.push({ symbol: item.symbol, name: item.name, ...overUnder });
+        for (let i = 0; i < markets.length; i++) {
+            if (!state.running) return null;
+            emit({ type: 'scanning', index: i + 1, total: markets.length, name: markets[i].display_name });
+            try {
+                const digitData = await fetchDigitDistribution(markets[i].symbol);
+                const dist = digitData?.distribution;
+                if (!dist) continue;
+                const totalTicks = dist.reduce((sum, count) => sum + count, 0);
+                if (totalTicks < 20) continue;
+                const overUnder = scoreOverUnder(dist, totalTicks);
+                rows.push({ symbol: markets[i].symbol, name: markets[i].display_name, ...overUnder });
+            } catch (e) {
+                /* ignore individual digit market failures */
+            }
+            await new Promise(resolve => setTimeout(resolve, 120));
         }
 
         if (!rows.length) {
@@ -222,6 +220,26 @@ async function findEntry(settings) {
             barrier: best.barrier,
             confidence: best.confidence,
         };
+    }
+
+    const scored = [];
+    for (let i = 0; i < markets.length; i++) {
+        if (!state.running) return null;
+        emit({ type: 'scanning', index: i + 1, total: markets.length, name: markets[i].display_name });
+        try {
+            const v = await window.apexScan(markets[i].symbol, settings.tradeType);
+            if (v && !v.noData) {
+                scored.push({ symbol: markets[i].symbol, name: markets[i].display_name, v });
+            }
+        } catch (e) {
+            /* ignore individual market failures */
+        }
+        await new Promise(resolve => setTimeout(resolve, 120));
+    }
+
+    if (!scored.length) {
+        emit({ type: 'noEntry', bestConfidence: 0, threshold: settings.safeMode ? 75 : 60 });
+        return null;
     }
 
     scored.sort((a, b) => (b.v.score || 0) - (a.v.score || 0));
