@@ -7,6 +7,7 @@
  * a later phase because they are statistical only, never guaranteed.
  */
 import { api_base } from '@/external/bot-skeleton';
+import { analyzeDigits } from '@/external/apex-scanner/scanner';
 
 const DIGIT_TYPES = ['Even / Odd', 'Over / Under', 'Matches / Differs'];
 
@@ -14,6 +15,50 @@ const CONTRACT_MAP = {
     RISE: 'CALL',
     FALL: 'PUT',
 };
+
+function scoreOverUnder(distribution, totalTicks) {
+    const total = totalTicks || distribution.reduce((sum, count) => sum + count, 0) || 1;
+    const freq = distribution.map(count => count / total);
+    const candidates = [];
+
+    for (let barrier = 0; barrier <= 8; barrier++) {
+        const winDigits = [];
+        for (let digit = barrier + 1; digit <= 9; digit++) winDigits.push(digit);
+        const structural = winDigits.length / 10;
+        const observed = winDigits.reduce((sum, digit) => sum + freq[digit], 0);
+        const winProb = structural * 0.85 + observed * 0.15;
+        candidates.push({ direction: 'OVER', barrier, winProb, structural });
+    }
+
+    for (let barrier = 1; barrier <= 9; barrier++) {
+        const winDigits = [];
+        for (let digit = 0; digit <= barrier - 1; digit++) winDigits.push(digit);
+        const structural = winDigits.length / 10;
+        const observed = winDigits.reduce((sum, digit) => sum + freq[digit], 0);
+        const winProb = structural * 0.85 + observed * 0.15;
+        candidates.push({ direction: 'UNDER', barrier, winProb, structural });
+    }
+
+    const banded = candidates.filter(candidate => candidate.winProb >= 0.55 && candidate.winProb <= 0.82);
+    const pool = banded.length ? banded : candidates;
+    pool.sort((a, b) => b.winProb - a.winProb);
+    const best = pool[0];
+
+    return {
+        direction: best.direction,
+        barrier: best.barrier,
+        winProb: best.winProb,
+        confidence: Math.round(best.winProb * 100),
+        note: 'Structural odds (RNG) - not a prediction',
+    };
+}
+
+function digitContractType(tradeType, direction) {
+    if (tradeType === 'Over / Under') return direction === 'OVER' ? 'DIGITOVER' : 'DIGITUNDER';
+    if (tradeType === 'Even / Odd') return direction === 'EVEN' ? 'DIGITEVEN' : 'DIGITODD';
+    if (tradeType === 'Matches / Differs') return direction === 'MATCH' ? 'DIGITMATCH' : 'DIGITDIFF';
+    return null;
+}
 
 const state = {
     running: false,
@@ -96,6 +141,7 @@ async function findEntry(settings) {
         return null;
     }
 
+    const isDigit = DIGIT_TYPES.includes(settings.tradeType);
     const markets = getMarkets(settings);
     if (!markets.length) {
         emit({ type: 'tradeError', message: 'No open markets found for this category.' });
@@ -120,6 +166,62 @@ async function findEntry(settings) {
     if (!scored.length) {
         emit({ type: 'noEntry', bestConfidence: 0, threshold: settings.safeMode ? 75 : 60 });
         return null;
+    }
+
+    if (isDigit) {
+        if (settings.tradeType !== 'Over / Under') {
+            emit({
+                type: 'tradeError',
+                message: 'Even/Odd & Matches/Differs auto-trading arrive next. Use Over/Under or Rise/Fall.',
+            });
+            return null;
+        }
+
+        const rows = [];
+        for (const item of scored) {
+            const dist =
+                item.v?.digit?.distribution ||
+                (typeof analyzeDigits === 'function' ? analyzeDigits(window._digits || [])?.distribution : null);
+            if (!dist) continue;
+            const totalTicks = dist.reduce((sum, count) => sum + count, 0);
+            if (totalTicks < 20) continue;
+            const overUnder = scoreOverUnder(dist, totalTicks);
+            rows.push({ symbol: item.symbol, name: item.name, ...overUnder });
+        }
+
+        if (!rows.length) {
+            emit({ type: 'noEntry', bestConfidence: 0, threshold: 0 });
+            return null;
+        }
+
+        rows.sort((a, b) => b.winProb - a.winProb);
+        emit({
+            type: 'scanTable',
+            digit: true,
+            rows: rows.map(row => ({
+                name: row.name,
+                symbol: row.symbol,
+                entry: `${row.direction} ${row.barrier}`,
+                confidence: row.confidence,
+                note: row.note,
+            })),
+        });
+
+        const best = rows[0];
+        const threshold = settings.safeMode ? 72 : 60;
+        if (best.confidence < threshold) {
+            emit({ type: 'noEntry', bestConfidence: best.confidence, threshold });
+            return null;
+        }
+
+        return {
+            symbol: best.symbol,
+            name: best.name,
+            tradeType: 'Over / Under',
+            direction: best.direction,
+            barrier: best.barrier,
+            confidence: best.confidence,
+        };
     }
 
     scored.sort((a, b) => (b.v.score || 0) - (a.v.score || 0));
@@ -147,6 +249,7 @@ async function findEntry(settings) {
     return {
         symbol: best.symbol,
         name: best.name,
+        tradeType: 'Rise / Fall',
         direction: best.v.direction === 'CALL' ? 'RISE' : 'FALL',
         confidence,
     };
@@ -165,10 +268,11 @@ function cleanupContractSubscription() {
 
 function placeTrade(entry, settings) {
     return new Promise(resolve => {
-        const contract_type = CONTRACT_MAP[entry.direction];
         const currency = getCurrency();
         const amount = state.currentStake;
         const duration = Math.max(1, Math.round(num(settings.duration, 1)));
+        const isDigit = DIGIT_TYPES.includes(entry.tradeType);
+        const contract_type = isDigit ? digitContractType(entry.tradeType, entry.direction) : CONTRACT_MAP[entry.direction];
 
         cleanupContractSubscription();
 
@@ -185,6 +289,11 @@ function placeTrade(entry, settings) {
                 underlying_symbol: entry.symbol,
             },
         };
+
+        if (isDigit && entry.barrier !== undefined && entry.barrier !== null) {
+            buyReq.parameters.barrier = String(entry.barrier);
+            buyReq.parameters.selected_tick = entry.barrier;
+        }
 
         emit({ type: 'placing', entry, stake: amount });
 
@@ -322,13 +431,18 @@ export function startAutoTrader(settings) {
         return;
     }
 
-    if (settings.tradeType && DIGIT_TYPES.includes(settings.tradeType)) {
-        emit({ type: 'tradeError', message: 'Digit auto-trading arrives in the next update. Use Rise / Fall for now.' });
+    const tradeType = settings.tradeType || 'Rise / Fall';
+    const allowed = ['Rise / Fall', 'Over / Under'];
+    if (!allowed.includes(tradeType)) {
+        emit({
+            type: 'tradeError',
+            message: `${tradeType} auto-trading arrives in the next update. Use Rise/Fall or Over/Under.`,
+        });
         return;
     }
 
-    state.settings = { ...settings, tradeType: 'Rise / Fall' };
-    state.baseStake = Math.max(0.35, num(settings.stake, 1));
+    state.settings = { ...settings, tradeType };
+    state.baseStake = num(settings.stake, 1);
     state.currentStake = state.baseStake;
     state.consecutiveLosses = 0;
     state.totalProfit = 0;

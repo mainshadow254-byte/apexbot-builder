@@ -18,14 +18,17 @@ const SETTING_KEYS = {
     safeMode: 'apex_ai_safemode',
     maxStake: 'apex_ai_maxstake',
     category: 'apex_ai_category',
+    tradeType: 'apex_ai_tradetype',
 };
 
 type TScanRow = {
     name: string;
     symbol: string;
-    direction: string;
+    direction?: string;
+    entry?: string;
     confidence: number;
-    wait: boolean;
+    wait?: boolean;
+    note?: string;
 };
 
 type TToast = {
@@ -67,8 +70,10 @@ const ScannerPage = () => {
     const [martingale, setMartingale] = useState(loadBool(SETTING_KEYS.martingale, true));
     const [safeMode, setSafeMode] = useState(loadBool(SETTING_KEYS.safeMode, false));
     const [category, setCategory] = useState(load(SETTING_KEYS.category, 'synthetic_index'));
+    const [tradeType, setTradeType] = useState(load(SETTING_KEYS.tradeType, 'Rise / Fall'));
     const [stats, setStats] = useState(getAutoTraderState());
     const [scanRows, setScanRows] = useState<TScanRow[]>([]);
+    const [digitTable, setDigitTable] = useState(false);
     const [statusMsg, setStatusMsg] = useState('');
     const [resultPopup, setResultPopup] = useState<TResultPopup | null>(null);
     const [toasts, setToasts] = useState<TToast[]>([]);
@@ -82,11 +87,13 @@ const ScannerPage = () => {
             if (evt.type === 'scanning') {
                 setStatusMsg(`Scanning ${evt.index}/${evt.total} - ${evt.name}`);
             } else if (evt.type === 'scanTable') {
+                setDigitTable(Boolean(evt.digit));
                 setScanRows(evt.rows);
             } else if (evt.type === 'noEntry') {
                 setStatusMsg(`No entry - best confidence ${evt.bestConfidence}% (needs ${evt.threshold}%). Rescanning...`);
             } else if (evt.type === 'placing') {
-                setStatusMsg(`Placing ${evt.entry.direction} on ${evt.entry.name} - stake ${evt.stake}`);
+                const label = evt.entry.barrier !== undefined ? `${evt.entry.direction} ${evt.entry.barrier}` : evt.entry.direction;
+                setStatusMsg(`Placing ${label} on ${evt.entry.name} - stake ${evt.stake}`);
             } else if (evt.type === 'settled') {
                 const id = ++toastId.current;
                 setToasts(current => [...current, { id, win: evt.isWin, profit: evt.profit }]);
@@ -94,7 +101,7 @@ const ScannerPage = () => {
             } else if (evt.type === 'tradeError') {
                 setStatusMsg(`Warning: ${evt.message}`);
             } else if (evt.type === 'started') {
-                setStatusMsg('Smart AI started. Scanning for a clean Rise/Fall entry...');
+                setStatusMsg('Smart AI started. Scanning for a clean entry...');
             } else if (evt.type === 'stopped') {
                 setStatusMsg('Smart AI stopped.');
                 if (evt.stopReason && evt.stopReason.kind && evt.stopReason.kind !== 'manual') {
@@ -115,6 +122,7 @@ const ScannerPage = () => {
         localStorage.setItem(SETTING_KEYS.martingale, String(martingale));
         localStorage.setItem(SETTING_KEYS.safeMode, String(safeMode));
         localStorage.setItem(SETTING_KEYS.category, category);
+        localStorage.setItem(SETTING_KEYS.tradeType, tradeType);
     };
 
     const handleStart = () => {
@@ -130,7 +138,7 @@ const ScannerPage = () => {
             martingale,
             safeMode,
             category,
-            tradeType: 'Rise / Fall',
+            tradeType,
         });
     };
 
@@ -167,6 +175,13 @@ const ScannerPage = () => {
             </div>
 
             <div className='apex-ai__settings'>
+                <label>
+                    Trade Type
+                    <select value={tradeType} disabled={running} onChange={event => setTradeType(event.target.value)}>
+                        <option value='Rise / Fall'>Rise / Fall (price direction - real signal)</option>
+                        <option value='Over / Under'>Over / Under (digit - structural odds)</option>
+                    </select>
+                </label>
                 <label>
                     Market group
                     <select value={category} disabled={running} onChange={event => setCategory(event.target.value)}>
@@ -259,8 +274,11 @@ const ScannerPage = () => {
             <div className='apex-ai__status'>{statusMsg}</div>
 
             <div className='apex-ai__note'>
-                Auto-trading with martingale carries real risk. Stop Loss is a circuit breaker. Rise/Fall signals use
-                the live scanner engine. Test on a Demo account first.
+                Auto-trading with martingale carries real risk. Stop Loss is a hard circuit breaker.
+                <br />
+                Rise/Fall uses the live price-direction scanner (real signal). Over/Under "confidence" is the{' '}
+                <b>structural win-probability</b> of the contract (digits are RNG - this is honest odds, not a
+                prediction, and higher win-% means smaller payout). Test on Demo first.
             </div>
 
             <div className='apex-ai__scanner'>
@@ -270,13 +288,19 @@ const ScannerPage = () => {
                 </div>
                 <div className='apex-ai__row apex-ai__row--head'>
                     <span>MARKET</span>
-                    <span>SIGNAL</span>
+                    <span>{digitTable ? 'ENTRY' : 'SIGNAL'}</span>
                     <span>CONF</span>
                 </div>
                 {scanRows.map(row => (
                     <div className='apex-ai__row' key={row.symbol}>
                         <span>{row.name}</span>
-                        <span className={row.direction === 'RISE' ? 'pos' : 'neg'}>{row.wait ? 'WAIT' : row.direction}</span>
+                        {digitTable ? (
+                            <span className='pos'>{row.entry}</span>
+                        ) : (
+                            <span className={row.direction === 'RISE' ? 'pos' : 'neg'}>
+                                {row.wait ? 'WAIT' : row.direction}
+                            </span>
+                        )}
                         <span>{row.confidence}%</span>
                     </div>
                 ))}
