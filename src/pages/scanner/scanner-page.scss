@@ -258,10 +258,17 @@
 #id-scanner {
     display: flex;
     min-height: 0;
-    height: 100%;
+    height: calc(100vh - 36rem);
+    min-height: 42rem;
+    max-height: calc(100vh - 24rem);
 }
 
 @media (width <= 640px) {
+    #id-scanner {
+        height: 100%;
+        max-height: 100%;
+    }
+
     .apex-ai {
         padding-inline: 1rem;
         padding-bottom: 10rem;
