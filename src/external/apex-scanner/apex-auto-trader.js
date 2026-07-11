@@ -283,9 +283,9 @@ async function findEntry(settings) {
     // Rise/Fall: prefer calmer volatility indices, exclude spike markets (Boom/Crash/Jump)
     // which are devastating for martingale and don't mean-revert cleanly.
     if (settings.tradeType === 'Rise / Fall') {
-        const isSpike = sym => /BOOM|CRASH|JUMP|^stpRNG|STEP/i.test(String(sym));
+        const isVolatility = sym => /^R_\d+$/.test(String(sym)) || /^1HZ\d+V$/.test(String(sym));
         const preferOrder = ['R_10', '1HZ10V', 'R_25', '1HZ25V', 'R_50', '1HZ50V', 'R_75', '1HZ75V', 'R_100', '1HZ100V'];
-        markets = markets.filter(m => !isSpike(m.symbol));
+        markets = markets.filter(m => isVolatility(m.symbol));
         markets.sort((a, b) => {
             const ia = preferOrder.indexOf(a.symbol);
             const ib = preferOrder.indexOf(b.symbol);
