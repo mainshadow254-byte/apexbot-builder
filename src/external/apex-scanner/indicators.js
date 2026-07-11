@@ -58,4 +58,19 @@ export const TA = {
     const hh = Math.max(...h.slice(-p)), ll = Math.min(...l.slice(-p));
     return ((c[c.length - 1] - ll) / ((hh - ll) || 1)) * 100;
   },
+
+  // Rate of change (momentum) over p periods, as % of the value p ago.
+  roc(v, p = 5) {
+    if (!v || v.length < p + 1) return null;
+    const now = v[v.length - 1], past = v[v.length - 1 - p];
+    if (past === 0) return 0;
+    return ((now - past) / Math.abs(past)) * 100;
+  },
+
+  // Highest / lowest over the last p values.
+  highest(v, p) { if (!v || v.length < p) return null; return Math.max(...v.slice(-p)); },
+  lowest(v, p) { if (!v || v.length < p) return null; return Math.min(...v.slice(-p)); },
+
+  // RSI computed on a tick/price array (reused for tick-level reversion).
+  rsiOn(arr, p = 14) { return this.rsi(arr, p); },
 };

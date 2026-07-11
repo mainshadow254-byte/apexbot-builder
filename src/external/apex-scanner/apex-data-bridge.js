@@ -4,7 +4,7 @@
 // Exposes the window.* globals the ported orb.js expects.
 
 import { api_base } from '@/external/bot-skeleton';
-import { analyze, analyzeDigits } from './scanner';
+import { analyze, analyzeDigits, analyzeReversion } from './scanner';
 
 const CANDLE_COUNT = 300;
 const CANDLE_GRANULARITY = 60;
@@ -133,6 +133,30 @@ async function apexScan(symbol, tradeType) {
     const digits = isDigit
         ? await ensureDigits(symbol)
         : (symbol === currentTickSymbol ? window._digits || [] : []);
+
+    // Rise/Fall on synthetics -> MEAN-REVERSION engine (tick-based).
+    if (tradeType === 'Rise / Fall') {
+        const info = (window.symbolsList || []).find(s => s.symbol === symbol || s.underlying_symbol === symbol);
+        const isSynthetic = info ? info.market === 'synthetic_index' : /^(R_|1HZ|BOOM|CRASH|stpRNG|JD|RDBEAR|RDBULL)/i.test(symbol);
+        if (isSynthetic) {
+            let ticks = [];
+            try {
+                const resp = await apiSend({
+                    ticks_history: symbol,
+                    style: 'ticks',
+                    count: 200,
+                    end: 'latest',
+                    adjust_start_time: 1,
+                });
+                ticks = (resp?.history?.prices || []).map(Number);
+            } catch (e) {
+                /* fall back to candles inside analyzeReversion */
+            }
+            const rev = analyzeReversion(ticks, r.candles);
+            if (rev) return rev;
+        }
+        // if reversion couldn't compute, fall through to old analyze() as fallback
+    }
 
     let higher = null;
     try {

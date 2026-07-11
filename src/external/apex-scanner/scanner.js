@@ -26,6 +26,72 @@ export function analyzeDigits(ticks) {
   };
 }
 
+/**
+ * MEAN-REVERSION engine for short-duration synthetic Rise/Fall.
+ * Research-backed: 1-tick synthetics revert from extremes rather than trend.
+ * Scores reversion signals; fires FALL from overbought highs, RISE from oversold lows.
+ * `ticks` = raw price array (preferred). `candles` used for RSI/BB context.
+ */
+export function analyzeReversion(ticks, candles) {
+  const px = (ticks && ticks.length >= 30) ? ticks.map(Number) : (candles || []).map(c => +c.close);
+  if (!px || px.length < 30) return null;
+
+  const price = px[px.length - 1];
+  const rsi = TA.rsi(px, 14);
+  const bb = TA.bollinger(px, 20, 2);
+  const roc = TA.roc(px, 5);
+  const hi20 = TA.highest(px, 20);
+  const lo20 = TA.lowest(px, 20);
+  // Direction of the last move (did it just tick up or down?)
+  const prev = px[px.length - 2];
+  const justUp = price > prev;
+  const justDown = price < prev;
+
+  let fall = 0, rise = 0;
+  const reasons = [];
+
+  // --- FALL signals (bet against an overbought top) ---
+  if (rsi != null && rsi >= 72) { fall += 3; reasons.push({ ok: true, txt: `RSI ${rsi.toFixed(0)} overbought - reversion FALL.` }); }
+  if (bb && price >= bb.upper) { fall += 3; reasons.push({ ok: true, txt: `Price at/above upper Bollinger - reversion FALL.` }); }
+  if (roc != null && roc > 0 && roc < 0.03) { fall += 2; reasons.push({ ok: true, txt: `Upward momentum fading - reversion FALL.` }); }
+  if (justDown) { fall += 2; reasons.push({ ok: true, txt: `Just reversed downward - momentum FALL.` }); }
+  if (hi20 != null && price >= hi20) { fall += 1; reasons.push({ ok: true, txt: `At 20-tick local high - stretched, FALL.` }); }
+
+  // --- RISE signals (bet against an oversold bottom) ---
+  if (rsi != null && rsi <= 28) { rise += 3; reasons.push({ ok: true, txt: `RSI ${rsi.toFixed(0)} oversold - reversion RISE.` }); }
+  if (bb && price <= bb.lower) { rise += 3; reasons.push({ ok: true, txt: `Price at/below lower Bollinger - reversion RISE.` }); }
+  if (roc != null && roc < 0 && roc > -0.03) { rise += 2; reasons.push({ ok: true, txt: `Downward momentum fading - reversion RISE.` }); }
+  if (justUp) { rise += 2; reasons.push({ ok: true, txt: `Just reversed upward - momentum RISE.` }); }
+  if (lo20 != null && price <= lo20) { rise += 1; reasons.push({ ok: true, txt: `At 20-tick local low - stretched, RISE.` }); }
+
+  const top = Math.max(fall, rise);
+  const direction = fall >= rise ? 'PUT' : 'CALL';   // PUT = FALL, CALL = RISE
+  const opposite = direction === 'PUT' ? rise : fall;
+
+  // Fire ONLY on strong, one-sided reversion (score >= 6 AND clearly beats opposite).
+  const MIN_SCORE = 6;
+  const strong = top >= MIN_SCORE && top >= opposite + 3;
+
+  // Confidence honestly reflects one-sided reversion strength (cap realistic).
+  let confidence = Math.round(Math.min(1, top / 11) * 100);
+  if (top < MIN_SCORE || top < opposite + 3) confidence = Math.min(confidence, 45);
+
+  // Map to the same verdict shape analyze() returns so downstream code is unchanged.
+  const wait = !strong;
+  const contradictions = strong ? 0 : 1;
+  const score = Math.round(50 + (top - opposite) * 6);  // rough quality proxy
+  const color = strong
+    ? { key: 'green', label: 'SAFE', css: '#2fe38b' }
+    : { key: 'amber', label: 'WAIT', css: '#ffb547' };
+
+  return {
+    score: Math.max(0, Math.min(100, score)),
+    color, direction, confidence, contradictions, wait, reasons,
+    reversion: true,
+    metrics: { rsi, roc, price, bbUpper: bb?.upper, bbLower: bb?.lower },
+  };
+}
+
 // Core AI Safe-Entry scanner. Accepts real Deriv candles + optional digit/higher-timeframe data.
 // This is the ONLY function that decides trade direction/safety at runtime - the Bot Builder
 // (Phase 6) will supply extra `conditions[]` that trader.js (Phase 3) checks ON TOP of this,

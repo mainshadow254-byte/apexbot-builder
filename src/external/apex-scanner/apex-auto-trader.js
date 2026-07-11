@@ -166,7 +166,7 @@ const conviction = {
     lastKey: null,
     streak: 0,
 };
-const REQUIRED_STREAK = 2;
+const REQUIRED_STREAK = 3; // stronger conviction, fewer/surer entries
 
 function snapshot() {
     return {
@@ -279,6 +279,20 @@ async function findEntry(settings) {
 
     const isDigit = DIGIT_TYPES.includes(settings.tradeType);
     let markets = getMarkets(settings);
+
+    // Rise/Fall: prefer calmer volatility indices, exclude spike markets (Boom/Crash/Jump)
+    // which are devastating for martingale and don't mean-revert cleanly.
+    if (settings.tradeType === 'Rise / Fall') {
+        const isSpike = sym => /BOOM|CRASH|JUMP|^stpRNG|STEP/i.test(String(sym));
+        const preferOrder = ['R_10', '1HZ10V', 'R_25', '1HZ25V', 'R_50', '1HZ50V', 'R_75', '1HZ75V', 'R_100', '1HZ100V'];
+        markets = markets.filter(m => !isSpike(m.symbol));
+        markets.sort((a, b) => {
+            const ia = preferOrder.indexOf(a.symbol);
+            const ib = preferOrder.indexOf(b.symbol);
+            return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+        });
+    }
+
     const isDigitCapable = s => {
         const sym = String(s.symbol || '');
         return /^R_\d+$/.test(sym) || /^1HZ\d+V$/.test(sym);

@@ -66,7 +66,7 @@ const ScannerPage = () => {
     const [stake, setStake] = useState(load(SETTING_KEYS.stake, '1'));
     const [takeProfit, setTakeProfit] = useState(load(SETTING_KEYS.takeProfit, '10'));
     const [stopLoss, setStopLoss] = useState(load(SETTING_KEYS.stopLoss, '30'));
-    const [duration, setDuration] = useState(load(SETTING_KEYS.duration, '1'));
+    const [duration, setDuration] = useState(load(SETTING_KEYS.duration, '5'));
     const [multiplier, setMultiplier] = useState(load(SETTING_KEYS.multiplier, '2'));
     const [maxStake, setMaxStake] = useState(load(SETTING_KEYS.maxStake, '0'));
     const [martingale, setMartingale] = useState(loadBool(SETTING_KEYS.martingale, true));
@@ -288,15 +288,18 @@ const ScannerPage = () => {
             <div className='apex-ai__status'>{statusMsg}</div>
 
             <div className='apex-ai__note'>
-                <b>Conviction Mode:</b> the AI only enters when a signal is strong, has no contradictions, and
-                persists across {2} consecutive scans - so it skips markets it is not sure of. It will trade less
-                often, but with higher conviction. Rise/Fall uses real price-direction signal; digits stay RNG.
+                <b>Rise/Fall uses a mean-reversion engine</b> tuned for synthetic indices - it enters when price
+                is stretched to an extreme (overbought/oversold + Bollinger + fading momentum) and bets on the
+                reversal, on calmer Volatility indices only (Boom/Crash/Jump excluded). Around 5-tick duration works best.
+                It only fires on strong, one-sided setups that persist across 3 scans.
+                <br /><b>Honest note:</b> synthetics are RNG-driven - a good engine improves consistency and cuts bad
+                entries, but no strategy wins every time. Manage risk; test on Demo.
             </div>
 
             <div className='apex-ai__note'>
                 Auto-trading with martingale carries real risk. Stop Loss is a hard circuit breaker.
                 <br />
-                Rise/Fall uses the live price-direction scanner (real signal). Digit "confidence" is the{' '}
+                Rise/Fall uses the live mean-reversion scanner (real synthetic price extremes). Digit "confidence" is the{' '}
                 <b>structural win-probability</b> of the contract; <b>EDGE</b> shows how far recent digits deviate
                 from pure random. Digits are RNG - this is honest odds ranked by recent edge, NOT a prediction,
                 and higher win-% means smaller payout. Test on Demo first.
