@@ -246,7 +246,25 @@ async function findEntry(settings) {
     }
 
     const isDigit = DIGIT_TYPES.includes(settings.tradeType);
-    const markets = getMarkets(settings);
+    let markets = getMarkets(settings);
+    const isDigitCapable = s => {
+        const sym = String(s.symbol || '');
+        return /^R_\d+$/.test(sym) || /^1HZ\d+V$/.test(sym);
+    };
+
+    if (isDigit) {
+        markets = markets.filter(isDigitCapable);
+    }
+
+    if (isDigit && !markets.length) {
+        emit({
+            type: 'tradeError',
+            message:
+                'No digit-capable Volatility markets available right now. (Digits only trade on Volatility indices, not Boom/Crash/Jump.)',
+        });
+        return null;
+    }
+
     if (!markets.length) {
         emit({ type: 'tradeError', message: 'No open markets found for this category.' });
         return null;
@@ -435,7 +453,12 @@ function placeTrade(entry, settings) {
             .then(res => {
                 if (res?.error) {
                     clearTimeout(timeout);
-                    emit({ type: 'tradeError', message: res.error.message });
+                    emit({
+                        type: 'tradeError',
+                        message: `Buy rejected: ${res.error.message}${res.error.code ? ` [${res.error.code}]` : ''}`,
+                    });
+                    // eslint-disable-next-line no-console
+                    console.warn('[ApexAI] buy rejected:', res.error, 'payload:', buyReq.parameters);
                     finish({ error: true });
                     return;
                 }
@@ -479,7 +502,9 @@ function placeTrade(entry, settings) {
             })
             .catch(err => {
                 clearTimeout(timeout);
-                emit({ type: 'tradeError', message: err?.message || 'buy failed' });
+                emit({ type: 'tradeError', message: `Buy failed: ${err?.message || 'unknown'}` });
+                // eslint-disable-next-line no-console
+                console.warn('[ApexAI] buy exception:', err, 'payload:', buyReq.parameters);
                 finish({ error: true });
             });
     });
