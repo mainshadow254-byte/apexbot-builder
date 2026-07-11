@@ -17,6 +17,7 @@ const SETTING_KEYS = {
     martingale: 'apex_ai_martingale',
     safeMode: 'apex_ai_safemode',
     maxStake: 'apex_ai_maxstake',
+    maxLossStreak: 'apex_ai_max_loss_streak',
     category: 'apex_ai_category',
     tradeType: 'apex_ai_tradetype',
 };
@@ -69,6 +70,7 @@ const ScannerPage = () => {
     const [duration, setDuration] = useState(load(SETTING_KEYS.duration, '5'));
     const [multiplier, setMultiplier] = useState(load(SETTING_KEYS.multiplier, '2'));
     const [maxStake, setMaxStake] = useState(load(SETTING_KEYS.maxStake, '0'));
+    const [maxLossStreak, setMaxLossStreak] = useState(load(SETTING_KEYS.maxLossStreak, '4'));
     const [martingale, setMartingale] = useState(loadBool(SETTING_KEYS.martingale, true));
     const [safeMode, setSafeMode] = useState(loadBool(SETTING_KEYS.safeMode, false));
     const [category, setCategory] = useState(load(SETTING_KEYS.category, 'synthetic_index'));
@@ -131,6 +133,7 @@ const ScannerPage = () => {
         localStorage.setItem(SETTING_KEYS.duration, duration);
         localStorage.setItem(SETTING_KEYS.multiplier, multiplier);
         localStorage.setItem(SETTING_KEYS.maxStake, maxStake);
+        localStorage.setItem(SETTING_KEYS.maxLossStreak, maxLossStreak);
         localStorage.setItem(SETTING_KEYS.martingale, String(martingale));
         localStorage.setItem(SETTING_KEYS.safeMode, String(safeMode));
         localStorage.setItem(SETTING_KEYS.category, category);
@@ -147,6 +150,7 @@ const ScannerPage = () => {
             duration,
             multiplier,
             maxStake,
+            maxLossStreak,
             martingale,
             safeMode,
             category,
@@ -255,6 +259,15 @@ const ScannerPage = () => {
                         onChange={event => setMaxStake(event.target.value)}
                     />
                 </label>
+                <label>
+                    Max Loss Streak (halt)
+                    <input
+                        type='number'
+                        value={maxLossStreak}
+                        disabled={running}
+                        onChange={event => setMaxLossStreak(event.target.value)}
+                    />
+                </label>
                 <label className='apex-ai__toggle'>
                     <span>Martingale</span>
                     <input
@@ -303,6 +316,11 @@ const ScannerPage = () => {
                 <b>structural win-probability</b> of the contract; <b>EDGE</b> shows how far recent digits deviate
                 from pure random. Digits are RNG - this is honest odds ranked by recent edge, NOT a prediction,
                 and higher win-% means smaller payout. Test on Demo first.
+            </div>
+
+            <div className='apex-ai__note apex-ai__note--eval'>
+                📊 <b>To measure true win rate:</b> set Martingale OFF, a small flat Stake, and a wide Stop Loss,
+                then run 25+ trades. Martingale is a money-management layer - turn it on only after you trust the raw edge.
             </div>
 
             <div className='apex-ai__scanner'>
@@ -362,7 +380,11 @@ const ScannerPage = () => {
                     <div className='apex-ai__popup' onClick={event => event.stopPropagation()}>
                         <div className='apex-ai__popup-icon'>AI</div>
                         <div className='apex-ai__popup-title'>
-                            {resultPopup.kind === 'takeProfit' ? 'Take Profit Hit' : 'Stop Loss Hit'}
+                            {resultPopup.kind === 'takeProfit'
+                                ? 'Take Profit Hit'
+                                : resultPopup.kind === 'lossStreak'
+                                  ? 'Loss Streak Halt'
+                                  : 'Stop Loss Hit'}
                         </div>
                         <div className={`apex-ai__popup-amount ${resultPopup.amount >= 0 ? 'pos' : 'neg'}`}>
                             {resultPopup.amount >= 0 ? '+' : ''}

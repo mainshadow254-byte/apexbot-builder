@@ -47,6 +47,15 @@ export function analyzeReversion(ticks, candles) {
   const justUp = price > prev;
   const justDown = price < prev;
 
+  // Require confluence at a real extreme, plus tick-sequence confirmation.
+  // Count how many of the last 3 ticks moved in the reversion direction.
+  const last3 = px.slice(-4);
+  let downTicks = 0, upTicks = 0;
+  for (let i = 1; i < last3.length; i++) {
+    if (last3[i] < last3[i - 1]) downTicks++;
+    if (last3[i] > last3[i - 1]) upTicks++;
+  }
+
   let fall = 0, rise = 0;
   const reasons = [];
 
@@ -68,13 +77,26 @@ export function analyzeReversion(ticks, candles) {
   const direction = fall >= rise ? 'PUT' : 'CALL';   // PUT = FALL, CALL = RISE
   const opposite = direction === 'PUT' ? rise : fall;
 
-  // Fire ONLY on strong, one-sided reversion (score >= 6 AND clearly beats opposite).
-  const MIN_SCORE = 6;
-  const strong = top >= MIN_SCORE && top >= opposite + 3;
+  // Stronger confirmation: extreme + Bollinger touch + reversal already underway.
+  const fallConfluence =
+    (rsi != null && rsi >= 74) &&
+    (bb && price >= bb.upper) &&
+    downTicks >= 1;
+  const riseConfluence =
+    (rsi != null && rsi <= 26) &&
+    (bb && price <= bb.lower) &&
+    upTicks >= 1;
+
+  const coreConfluence = (direction === 'PUT' && fallConfluence) || (direction === 'CALL' && riseConfluence);
+  const MIN_SCORE = 7;
+  const strong = top >= MIN_SCORE && top >= opposite + 4 && coreConfluence;
 
   // Confidence honestly reflects one-sided reversion strength (cap realistic).
   let confidence = Math.round(Math.min(1, top / 11) * 100);
-  if (top < MIN_SCORE || top < opposite + 3) confidence = Math.min(confidence, 45);
+  if (top < MIN_SCORE || top < opposite + 4 || !coreConfluence) confidence = Math.min(confidence, 45);
+  if (!coreConfluence) {
+    reasons.push({ ok: false, txt: 'WAIT - reversion not confirmed at a true extreme.' });
+  }
 
   // Map to the same verdict shape analyze() returns so downstream code is unchanged.
   const wait = !strong;

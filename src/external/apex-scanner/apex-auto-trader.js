@@ -674,6 +674,20 @@ async function loop() {
 
         emit({ type: 'settled', profit: result.profit, isWin, ...snapshot() });
 
+        // Pro risk mgmt: halt a bad streak before it compounds.
+        if (!isWin) {
+            const maxStreak = num(state.settings.maxLossStreak, 4);
+            if (maxStreak > 0 && state.consecutiveLosses >= maxStreak) {
+                state.stopReason = { kind: 'lossStreak', amount: state.totalProfit, streak: state.consecutiveLosses };
+                emit({
+                    type: 'staleSkip',
+                    message: `Auto-halt: ${state.consecutiveLosses} losses in a row - stopping to protect capital.`,
+                });
+                stop('lossStreak');
+                break;
+            }
+        }
+
         const takeProfit = num(state.settings.takeProfit, 0);
         const stopLoss = num(state.settings.stopLoss, 0);
         if (takeProfit > 0 && state.totalProfit >= takeProfit) {
