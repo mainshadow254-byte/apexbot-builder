@@ -27,6 +27,7 @@ type TScanRow = {
     direction?: string;
     entry?: string;
     confidence: number;
+    edgePct?: number;
     wait?: boolean;
     note?: string;
 };
@@ -179,7 +180,9 @@ const ScannerPage = () => {
                     Trade Type
                     <select value={tradeType} disabled={running} onChange={event => setTradeType(event.target.value)}>
                         <option value='Rise / Fall'>Rise / Fall (price direction - real signal)</option>
-                        <option value='Over / Under'>Over / Under (digit - structural odds)</option>
+                        <option value='Over / Under'>Over / Under (digit - edge-ranked odds)</option>
+                        <option value='Even / Odd'>Even/Odd (digit - ~50/50, near-random)</option>
+                        <option value='Matches / Differs'>Matches/Differs (digit - structural odds)</option>
                     </select>
                 </label>
                 <label>
@@ -276,9 +279,10 @@ const ScannerPage = () => {
             <div className='apex-ai__note'>
                 Auto-trading with martingale carries real risk. Stop Loss is a hard circuit breaker.
                 <br />
-                Rise/Fall uses the live price-direction scanner (real signal). Over/Under "confidence" is the{' '}
-                <b>structural win-probability</b> of the contract (digits are RNG - this is honest odds, not a
-                prediction, and higher win-% means smaller payout). Test on Demo first.
+                Rise/Fall uses the live price-direction scanner (real signal). Digit "confidence" is the{' '}
+                <b>structural win-probability</b> of the contract; <b>EDGE</b> shows how far recent digits deviate
+                from pure random. Digits are RNG - this is honest odds ranked by recent edge, NOT a prediction,
+                and higher win-% means smaller payout. Test on Demo first.
             </div>
 
             <div className='apex-ai__scanner'>
@@ -286,19 +290,26 @@ const ScannerPage = () => {
                     <span>Market Scanner ({scanRows.length})</span>
                     <span>by confidence</span>
                 </div>
-                <div className='apex-ai__row apex-ai__row--head'>
+                <div className={`apex-ai__row apex-ai__row--head ${digitTable ? 'apex-ai__row--digit' : ''}`}>
                     <span>MARKET</span>
                     <span>{digitTable ? 'ENTRY' : 'SIGNAL'}</span>
+                    {digitTable && <span>EDGE</span>}
                     <span>CONF</span>
                 </div>
                 {scanRows.map(row => (
-                    <div className='apex-ai__row' key={row.symbol}>
+                    <div className={`apex-ai__row ${digitTable ? 'apex-ai__row--digit' : ''}`} key={row.symbol}>
                         <span>{row.name}</span>
                         {digitTable ? (
                             <span className='pos'>{row.entry}</span>
                         ) : (
                             <span className={row.direction === 'RISE' ? 'pos' : 'neg'}>
                                 {row.wait ? 'WAIT' : row.direction}
+                            </span>
+                        )}
+                        {digitTable && (
+                            <span className={(row.edgePct || 0) > 0 ? 'pos' : (row.edgePct || 0) < 0 ? 'neg' : ''}>
+                                {(row.edgePct || 0) > 0 ? '+' : ''}
+                                {row.edgePct ?? 0}%
                             </span>
                         )}
                         <span>{row.confidence}%</span>

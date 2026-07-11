@@ -16,40 +16,99 @@ const CONTRACT_MAP = {
     FALL: 'PUT',
 };
 
+/**
+ * HONEST Over/Under scorer - ranks by EDGE over the RNG baseline, not raw win-%.
+ * edge = observedWinFrequency - structuralWinProbability.
+ * A market only "stands out" if recent digits deviate favorably from random.
+ * We still surface the TRUE win-% so the payout/risk trade-off stays honest.
+ */
 function scoreOverUnder(distribution, totalTicks) {
-    const total = totalTicks || distribution.reduce((sum, count) => sum + count, 0) || 1;
-    const freq = distribution.map(count => count / total);
+    const total = totalTicks || distribution.reduce((a, b) => a + b, 0) || 1;
+    const freq = distribution.map(c => c / total);
+
     const candidates = [];
-
-    for (let barrier = 0; barrier <= 8; barrier++) {
+    for (let n = 0; n <= 8; n++) {
         const winDigits = [];
-        for (let digit = barrier + 1; digit <= 9; digit++) winDigits.push(digit);
+        for (let d = n + 1; d <= 9; d++) winDigits.push(d);
         const structural = winDigits.length / 10;
-        const observed = winDigits.reduce((sum, digit) => sum + freq[digit], 0);
-        const winProb = structural * 0.85 + observed * 0.15;
-        candidates.push({ direction: 'OVER', barrier, winProb, structural });
+        const observed = winDigits.reduce((sum, d) => sum + freq[d], 0);
+        candidates.push({ direction: 'OVER', barrier: n, structural, observed, edge: observed - structural });
+    }
+    for (let n = 1; n <= 9; n++) {
+        const winDigits = [];
+        for (let d = 0; d <= n - 1; d++) winDigits.push(d);
+        const structural = winDigits.length / 10;
+        const observed = winDigits.reduce((sum, d) => sum + freq[d], 0);
+        candidates.push({ direction: 'UNDER', barrier: n, structural, observed, edge: observed - structural });
     }
 
-    for (let barrier = 1; barrier <= 9; barrier++) {
-        const winDigits = [];
-        for (let digit = 0; digit <= barrier - 1; digit++) winDigits.push(digit);
-        const structural = winDigits.length / 10;
-        const observed = winDigits.reduce((sum, digit) => sum + freq[digit], 0);
-        const winProb = structural * 0.85 + observed * 0.15;
-        candidates.push({ direction: 'UNDER', barrier, winProb, structural });
-    }
-
-    const banded = candidates.filter(candidate => candidate.winProb >= 0.55 && candidate.winProb <= 0.82);
+    // Keep a sensible win-% band (avoid tiny-payout 90% and risky <50%),
+    // then rank by EDGE (favorable deviation from random) within that band.
+    const banded = candidates.filter(c => c.structural >= 0.5 && c.structural <= 0.8);
     const pool = banded.length ? banded : candidates;
-    pool.sort((a, b) => b.winProb - a.winProb);
+    pool.sort((a, b) => b.edge - a.edge);
     const best = pool[0];
 
+    // Confidence shown = the TRUE structural win-% blended slightly with observed.
+    const winProb = best.structural * 0.85 + best.observed * 0.15;
     return {
         direction: best.direction,
         barrier: best.barrier,
-        winProb: best.winProb,
-        confidence: Math.round(best.winProb * 100),
-        note: 'Structural odds (RNG) - not a prediction',
+        winProb,
+        edge: best.edge,
+        confidence: Math.round(winProb * 100),
+        edgePct: Math.round(best.edge * 1000) / 10,
+        note: 'Structural odds (RNG) - ranked by recent edge, not a prediction',
+    };
+}
+
+/**
+ * Even/Odd - inherently ~50/50. We surface the recent lean but CAP it honestly.
+ * There is no real predictive edge here; we rank by mild recent deviation only
+ * and label it clearly as near-random.
+ */
+function scoreEvenOdd(distribution, totalTicks) {
+    const total = totalTicks || distribution.reduce((a, b) => a + b, 0) || 1;
+    let even = 0;
+    for (let d = 0; d <= 9; d++) if (d % 2 === 0) even += distribution[d];
+    const evenFreq = even / total;
+    const oddFreq = 1 - evenFreq;
+    const direction = evenFreq >= oddFreq ? 'EVEN' : 'ODD';
+    const observed = Math.max(evenFreq, oddFreq);
+    const edge = observed - 0.5;
+    return {
+        direction,
+        barrier: undefined,
+        winProb: observed,
+        edge,
+        confidence: Math.round(observed * 100),
+        edgePct: Math.round(edge * 1000) / 10,
+        note: 'Even/Odd is ~50/50 (RNG) - recent lean only, essentially random',
+    };
+}
+
+/**
+ * Matches/Differs - DIGITDIFF wins 9/10 by structure (~90%, tiny payout);
+ * DIGITMATCH wins ~1/10. We pick the least-frequent digit for DIFFERS so the
+ * observed differs-win frequency is highest. Honest odds, not a prediction.
+ */
+function scoreMatchesDiffers(distribution, totalTicks) {
+    const total = totalTicks || distribution.reduce((a, b) => a + b, 0) || 1;
+    const freq = distribution.map(c => c / total);
+    let minD = 0;
+    for (let d = 1; d <= 9; d++) if (freq[d] < freq[minD]) minD = d;
+    const differsWin = 1 - freq[minD];
+    const structuralDiffers = 0.9;
+    const edge = differsWin - structuralDiffers;
+    const winProb = structuralDiffers * 0.85 + differsWin * 0.15;
+    return {
+        direction: 'DIFFERS',
+        barrier: minD,
+        winProb,
+        edge,
+        confidence: Math.round(winProb * 100),
+        edgePct: Math.round(edge * 1000) / 10,
+        note: 'Differs ~90% structural (tiny payout) - honest odds, not a prediction',
     };
 }
 
@@ -161,14 +220,6 @@ async function findEntry(settings) {
     }
 
     if (isDigit) {
-        if (settings.tradeType !== 'Over / Under') {
-            emit({
-                type: 'tradeError',
-                message: 'Even/Odd & Matches/Differs auto-trading arrive next. Use Over/Under or Rise/Fall.',
-            });
-            return null;
-        }
-
         const rows = [];
         for (let i = 0; i < markets.length; i++) {
             if (!state.running) return null;
@@ -179,8 +230,14 @@ async function findEntry(settings) {
                 if (!dist) continue;
                 const totalTicks = dist.reduce((sum, count) => sum + count, 0);
                 if (totalTicks < 20) continue;
-                const overUnder = scoreOverUnder(dist, totalTicks);
-                rows.push({ symbol: markets[i].symbol, name: markets[i].display_name, ...overUnder });
+
+                let score;
+                if (settings.tradeType === 'Over / Under') score = scoreOverUnder(dist, totalTicks);
+                else if (settings.tradeType === 'Even / Odd') score = scoreEvenOdd(dist, totalTicks);
+                else if (settings.tradeType === 'Matches / Differs') score = scoreMatchesDiffers(dist, totalTicks);
+                else continue;
+
+                rows.push({ symbol: markets[i].symbol, name: markets[i].display_name, ...score });
             } catch (e) {
                 /* ignore individual digit market failures */
             }
@@ -192,22 +249,23 @@ async function findEntry(settings) {
             return null;
         }
 
-        rows.sort((a, b) => b.winProb - a.winProb);
+        rows.sort((a, b) => b.edge - a.edge || b.winProb - a.winProb);
         emit({
             type: 'scanTable',
             digit: true,
             rows: rows.map(row => ({
                 name: row.name,
                 symbol: row.symbol,
-                entry: `${row.direction} ${row.barrier}`,
+                entry: row.barrier !== undefined ? `${row.direction} ${row.barrier}` : row.direction,
                 confidence: row.confidence,
+                edgePct: row.edgePct,
                 note: row.note,
             })),
         });
 
         const best = rows[0];
-        const threshold = settings.safeMode ? 72 : 60;
-        if (best.confidence < threshold) {
+        const threshold = settings.safeMode ? 72 : 55;
+        if (best.confidence < threshold || (settings.safeMode && best.edge < 0)) {
             emit({ type: 'noEntry', bestConfidence: best.confidence, threshold });
             return null;
         }
@@ -215,7 +273,7 @@ async function findEntry(settings) {
         return {
             symbol: best.symbol,
             name: best.name,
-            tradeType: 'Over / Under',
+            tradeType: settings.tradeType,
             direction: best.direction,
             barrier: best.barrier,
             confidence: best.confidence,
@@ -450,11 +508,11 @@ export function startAutoTrader(settings) {
     }
 
     const tradeType = settings.tradeType || 'Rise / Fall';
-    const allowed = ['Rise / Fall', 'Over / Under'];
+    const allowed = ['Rise / Fall', 'Over / Under', 'Even / Odd', 'Matches / Differs'];
     if (!allowed.includes(tradeType)) {
         emit({
             type: 'tradeError',
-            message: `${tradeType} auto-trading arrives in the next update. Use Rise/Fall or Over/Under.`,
+            message: `${tradeType} auto-trading is not available yet. Use Rise/Fall or a supported digit type.`,
         });
         return;
     }
