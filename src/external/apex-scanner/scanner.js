@@ -36,7 +36,7 @@ export function analyze(candles, digitData = null, higherTF = null) {
   const macd = TA.macd(close), bb = TA.bollinger(close, 20, 2), stoch = TA.stochastic(high, low, close, 14);
   const ema20 = TA.ema(close, 20), ema50 = TA.ema(close, 50), ema200 = TA.ema(close, 200);
   const price = close[close.length - 1];
-  let score = 50; const reasons = []; let bull = 0, bear = 0;
+  let score = 50; const reasons = []; let bull = 0, bear = 0; let htfAligned = null;
 
   // --- Market-quality factors (direction-neutral: is this tradeable at all?) ---
   if (adxO) {
@@ -96,6 +96,7 @@ export function analyze(candles, digitData = null, higherTF = null) {
     if (he20 && he50) {
       const htfBull = he20 > he50;
       const aligned = (htfBull && goingUp) || (!htfBull && !goingUp);
+      htfAligned = aligned;
       if (aligned) { score += 12; reasons.push({ ok: true, txt: `Higher timeframe agrees (${htfBull ? "up" : "down"}) - stronger confluence.` }); }
       else { score -= 15; contradictions++; reasons.push({ ok: false, txt: "Higher timeframe conflicts with entry direction - mixed signals." }); }
     }
@@ -103,9 +104,22 @@ export function analyze(candles, digitData = null, higherTF = null) {
 
   score = Math.max(0, Math.min(100, Math.round(score)));
 
-  // --- Confidence: vote separation, penalized by contradictions ---
-  let confidence = Math.round((voteGap / ((bull + bear) || 1)) * 100);
-  confidence = Math.max(0, confidence - contradictions * 20);
+  // --- Confidence = REAL conviction blend (not just vote ratio) ---
+  const totalVotes = (bull + bear) || 1;
+  const dominance = Math.min(1, voteGap / totalVotes);
+  const scoreStrength = Math.max(0, Math.min(1, (score - 50) / 50));
+  const cleanliness = Math.max(0, 1 - contradictions * 0.34);
+  const htfBoost = htfAligned === true ? 1 : (htfAligned === false ? 0 : 0.5);
+
+  let confidence = Math.round(
+    (scoreStrength * 0.40 +
+     cleanliness * 0.25 +
+     dominance * 0.20 +
+     htfBoost * 0.15) * 100
+  );
+  if (contradictions >= 1) confidence = Math.min(confidence, 60);
+  if (contradictions >= 2) confidence = Math.min(confidence, 35);
+  confidence = Math.max(0, Math.min(100, confidence));
 
   // --- Verdict gating: contradictions downgrade the label ---
   let color = safetyColor(score);
