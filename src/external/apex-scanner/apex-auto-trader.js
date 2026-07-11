@@ -161,6 +161,13 @@ const state = {
     listeners: new Set(),
 };
 
+// Conviction: require the same signal to persist across N consecutive scans.
+const conviction = {
+    lastKey: null,
+    streak: 0,
+};
+const REQUIRED_STREAK = 2;
+
 function snapshot() {
     return {
         running: state.running,
@@ -218,6 +225,31 @@ function getMarkets(settings) {
         }))
         .filter(s => s.symbol && (!settings.category || s.market === settings.category) && s.exchange_is_open !== 0)
         .slice(0, 20);
+}
+
+function resetConviction() {
+    conviction.lastKey = null;
+    conviction.streak = 0;
+}
+
+function requireConviction(candidate) {
+    const key = `${candidate.tradeType}|${candidate.symbol}|${candidate.direction}${
+        candidate.barrier !== undefined ? ` ${candidate.barrier}` : ''
+    }`;
+    if (conviction.lastKey === key) {
+        conviction.streak += 1;
+    } else {
+        conviction.lastKey = key;
+        conviction.streak = 1;
+    }
+
+    if (conviction.streak < REQUIRED_STREAK) {
+        emit({ type: 'confirming', key, streak: conviction.streak, required: REQUIRED_STREAK, name: candidate.name });
+        return null;
+    }
+
+    resetConviction();
+    return candidate;
 }
 
 function decimalsFromPip(pip, fallback = 2) {
@@ -323,7 +355,7 @@ async function findEntry(settings) {
             return null;
         }
 
-        return {
+        const candidate = {
             symbol: best.symbol,
             name: best.name,
             tradeType: settings.tradeType,
@@ -331,6 +363,7 @@ async function findEntry(settings) {
             barrier: best.barrier,
             confidence: best.confidence,
         };
+        return requireConviction(candidate);
     }
 
     const scored = [];
@@ -362,35 +395,50 @@ async function findEntry(settings) {
         return null;
     }
 
+    // ---- Rise/Fall CONVICTION gate ----
     scored.sort((a, b) => (b.v.score || 0) - (a.v.score || 0));
-
     emit({
         type: 'scanTable',
         rows: scored.map(s => ({
             name: s.name,
             symbol: s.symbol,
             direction: s.v.direction === 'CALL' ? 'RISE' : 'FALL',
-            confidence: Math.round(s.v.confidence || s.v.score || 0),
+            confidence: Math.round(s.v.confidence || 0),
+            score: Math.round(s.v.score || 0),
             wait: Boolean(s.v.wait),
         })),
     });
 
     const best = scored[0];
-    const confidence = Math.round(best.v.confidence || best.v.score || 0);
-    const threshold = settings.safeMode ? 75 : 60;
+    const v = best.v;
+    const scoreVal = Math.round(v.score || 0);
+    const confVal = Math.round(v.confidence || 0);
+    const minScore = settings.safeMode ? 78 : 70;
+    const minConf = settings.safeMode ? 65 : 55;
+    const passesConviction =
+        !v.wait && (v.contradictions || 0) === 0 && scoreVal >= minScore && confVal >= minConf;
 
-    if (best.v.wait || (best.v.contradictions || 0) >= 2 || confidence < threshold) {
-        emit({ type: 'noEntry', bestConfidence: confidence, threshold });
+    if (!passesConviction) {
+        emit({
+            type: 'noEntry',
+            bestConfidence: confVal,
+            threshold: minConf,
+            detail: `score ${scoreVal}/${minScore}, conf ${confVal}/${minConf}, contradictions ${
+                v.contradictions || 0
+            }`,
+        });
         return null;
     }
 
-    return {
+    const candidate = {
         symbol: best.symbol,
         name: best.name,
         tradeType: 'Rise / Fall',
-        direction: best.v.direction === 'CALL' ? 'RISE' : 'FALL',
-        confidence,
+        direction: v.direction === 'CALL' ? 'RISE' : 'FALL',
+        confidence: confVal,
+        score: scoreVal,
     };
+    return requireConviction(candidate);
 }
 
 function cleanupContractSubscription() {
@@ -520,6 +568,21 @@ async function loop() {
             continue;
         }
 
+        // SL overshoot guard: don't fire a stake that would blow past Stop Loss.
+        const slLimit = num(state.settings.stopLoss, 0);
+        if (slLimit > 0) {
+            const worstCase = state.totalProfit - state.currentStake;
+            if (worstCase <= -slLimit) {
+                state.stopReason = { kind: 'stopLoss', amount: state.totalProfit };
+                emit({
+                    type: 'staleSkip',
+                    message: `Stop Loss guard: next stake (${state.currentStake}) could exceed your limit. Stopping to protect capital.`,
+                });
+                stop('stopLoss');
+                break;
+            }
+        }
+
         let confirmed = entry;
         try {
             if (state.settings.tradeType === 'Rise / Fall') {
@@ -527,13 +590,21 @@ async function loop() {
                 if (fresh && !fresh.noData) {
                     const freshDir = fresh.direction === 'CALL' ? 'RISE' : 'FALL';
                     const freshConf = Math.round(fresh.confidence || fresh.score || 0);
-                    const threshold = state.settings.safeMode ? 75 : 60;
-                    if (freshDir !== entry.direction || fresh.wait || (fresh.contradictions || 0) >= 2 || freshConf < threshold) {
+                    const freshScore = Math.round(fresh.score || 0);
+                    const minScore = state.settings.safeMode ? 78 : 70;
+                    const minConf = state.settings.safeMode ? 65 : 55;
+                    if (
+                        freshDir !== entry.direction ||
+                        fresh.wait ||
+                        (fresh.contradictions || 0) !== 0 ||
+                        freshScore < minScore ||
+                        freshConf < minConf
+                    ) {
                         emit({ type: 'staleSkip', message: `Signal changed on ${entry.name} - skipping for a fresher entry.` });
                         await new Promise(resolve => setTimeout(resolve, 300));
                         continue;
                     }
-                    confirmed = { ...entry, confidence: freshConf };
+                    confirmed = { ...entry, confidence: freshConf, score: freshScore };
                 }
             } else if (DIGIT_TYPES.includes(state.settings.tradeType)) {
                 const digitData = await fetchDigitDistribution(entry.symbol);
@@ -634,6 +705,7 @@ export function startAutoTrader(settings) {
     state.lost = 0;
     state.stopReason = null;
     state.differsRiskWarned = false;
+    resetConviction();
     state.running = true;
 
     emit({ type: 'started', ...snapshot() });
@@ -643,6 +715,7 @@ export function startAutoTrader(settings) {
 export function stop(reason) {
     if (!state.running && !reason) return;
     state.running = false;
+    resetConviction();
     cleanupContractSubscription();
     emit({ type: 'stopped', reason: reason || 'manual', stopReason: state.stopReason, ...snapshot() });
 }

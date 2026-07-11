@@ -91,8 +91,14 @@ const ScannerPage = () => {
             } else if (evt.type === 'scanTable') {
                 setDigitTable(Boolean(evt.digit));
                 setScanRows(evt.rows);
+            } else if (evt.type === 'confirming') {
+                setStatusMsg(
+                    `Confirming signal on ${evt.name} (${evt.streak}/${evt.required}) - must persist before entering...`
+                );
             } else if (evt.type === 'noEntry') {
-                setStatusMsg(`No entry - best confidence ${evt.bestConfidence}% (needs ${evt.threshold}%). Rescanning...`);
+                setStatusMsg(
+                    `No entry - ${evt.detail || `best ${evt.bestConfidence}% (needs ${evt.threshold}%)`}. Rescanning...`
+                );
             } else if (evt.type === 'placing') {
                 const label = evt.entry.barrier !== undefined ? `${evt.entry.direction} ${evt.entry.barrier}` : evt.entry.direction;
                 setStatusMsg(`Placing ${label} on ${evt.entry.name} - stake ${evt.stake}`);
@@ -280,6 +286,12 @@ const ScannerPage = () => {
             )}
 
             <div className='apex-ai__status'>{statusMsg}</div>
+
+            <div className='apex-ai__note'>
+                <b>Conviction Mode:</b> the AI only enters when a signal is strong, has no contradictions, and
+                persists across {2} consecutive scans - so it skips markets it is not sure of. It will trade less
+                often, but with higher conviction. Rise/Fall uses real price-direction signal; digits stay RNG.
+            </div>
 
             <div className='apex-ai__note'>
                 Auto-trading with martingale carries real risk. Stop Loss is a hard circuit breaker.
