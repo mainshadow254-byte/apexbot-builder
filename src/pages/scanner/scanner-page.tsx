@@ -104,6 +104,8 @@ const ScannerPage = () => {
                 setStatusMsg(`Warning: ${evt.message}`);
             } else if (evt.type === 'riskWarning') {
                 setStatusMsg(`Warning: ${evt.message}`);
+            } else if (evt.type === 'staleSkip') {
+                setStatusMsg(`Refreshing: ${evt.message}`);
             } else if (evt.type === 'started') {
                 setStatusMsg('Smart AI started. Scanning for a clean entry...');
             } else if (evt.type === 'stopped') {

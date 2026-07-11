@@ -16,6 +16,9 @@ const CONTRACT_MAP = {
     FALL: 'PUT',
 };
 
+const BATCH_SIZE = 5;
+const BATCH_GAP_MS = 60;
+
 /**
  * HONEST Over/Under scorer - ranks by EDGE over the RNG baseline, not raw win-%.
  * edge = observedWinFrequency - structuralWinProbability.
@@ -131,6 +134,16 @@ function digitContractType(tradeType, direction) {
     return null;
 }
 
+function scoreDigitDistribution(tradeType, dist) {
+    if (!dist) return null;
+    const totalTicks = dist.reduce((sum, count) => sum + count, 0);
+    if (totalTicks < 20) return null;
+    if (tradeType === 'Over / Under') return scoreOverUnder(dist, totalTicks);
+    if (tradeType === 'Even / Odd') return scoreEvenOdd(dist, totalTicks);
+    if (tradeType === 'Matches / Differs') return scoreMatchesDiffers(dist, totalTicks);
+    return null;
+}
+
 const state = {
     running: false,
     settings: null,
@@ -241,27 +254,28 @@ async function findEntry(settings) {
 
     if (isDigit) {
         const rows = [];
-        for (let i = 0; i < markets.length; i++) {
+        for (let i = 0; i < markets.length; i += BATCH_SIZE) {
             if (!state.running) return null;
-            emit({ type: 'scanning', index: i + 1, total: markets.length, name: markets[i].display_name });
-            try {
-                const digitData = await fetchDigitDistribution(markets[i].symbol);
-                const dist = digitData?.distribution;
-                if (!dist) continue;
-                const totalTicks = dist.reduce((sum, count) => sum + count, 0);
-                if (totalTicks < 20) continue;
-
-                let score;
-                if (settings.tradeType === 'Over / Under') score = scoreOverUnder(dist, totalTicks);
-                else if (settings.tradeType === 'Even / Odd') score = scoreEvenOdd(dist, totalTicks);
-                else if (settings.tradeType === 'Matches / Differs') score = scoreMatchesDiffers(dist, totalTicks);
-                else continue;
-
-                rows.push({ symbol: markets[i].symbol, name: markets[i].display_name, ...score });
-            } catch (e) {
-                /* ignore individual digit market failures */
-            }
-            await new Promise(resolve => setTimeout(resolve, 120));
+            const batch = markets.slice(i, i + BATCH_SIZE);
+            emit({
+                type: 'scanning',
+                index: Math.min(i + BATCH_SIZE, markets.length),
+                total: markets.length,
+                name: batch[0]?.display_name || '',
+            });
+            const results = await Promise.all(batch.map(async m => {
+                try {
+                    const digitData = await fetchDigitDistribution(m.symbol);
+                    const score = scoreDigitDistribution(settings.tradeType, digitData?.distribution);
+                    return score ? { symbol: m.symbol, name: m.display_name, ...score } : null;
+                } catch (e) {
+                    return null;
+                }
+            }));
+            results.forEach(r => {
+                if (r) rows.push(r);
+            });
+            await new Promise(resolve => setTimeout(resolve, BATCH_GAP_MS));
         }
 
         if (!rows.length) {
@@ -302,18 +316,27 @@ async function findEntry(settings) {
     }
 
     const scored = [];
-    for (let i = 0; i < markets.length; i++) {
+    for (let i = 0; i < markets.length; i += BATCH_SIZE) {
         if (!state.running) return null;
-        emit({ type: 'scanning', index: i + 1, total: markets.length, name: markets[i].display_name });
-        try {
-            const v = await window.apexScan(markets[i].symbol, settings.tradeType);
-            if (v && !v.noData) {
-                scored.push({ symbol: markets[i].symbol, name: markets[i].display_name, v });
+        const batch = markets.slice(i, i + BATCH_SIZE);
+        emit({
+            type: 'scanning',
+            index: Math.min(i + BATCH_SIZE, markets.length),
+            total: markets.length,
+            name: batch[0]?.display_name || '',
+        });
+        const results = await Promise.all(batch.map(async m => {
+            try {
+                const v = await window.apexScan(m.symbol, settings.tradeType);
+                return v && !v.noData ? { symbol: m.symbol, name: m.display_name, v } : null;
+            } catch (e) {
+                return null;
             }
-        } catch (e) {
-            /* ignore individual market failures */
-        }
-        await new Promise(resolve => setTimeout(resolve, 120));
+        }));
+        results.forEach(r => {
+            if (r) scored.push(r);
+        });
+        await new Promise(resolve => setTimeout(resolve, BATCH_GAP_MS));
     }
 
     if (!scored.length) {
@@ -468,11 +491,41 @@ async function loop() {
         if (!state.running) break;
 
         if (!entry) {
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise(resolve => setTimeout(resolve, 600));
             continue;
         }
 
-        const result = await placeTrade(entry, state.settings);
+        let confirmed = entry;
+        try {
+            if (state.settings.tradeType === 'Rise / Fall') {
+                const fresh = await window.apexScan(entry.symbol, state.settings.tradeType);
+                if (fresh && !fresh.noData) {
+                    const freshDir = fresh.direction === 'CALL' ? 'RISE' : 'FALL';
+                    const freshConf = Math.round(fresh.confidence || fresh.score || 0);
+                    const threshold = state.settings.safeMode ? 75 : 60;
+                    if (freshDir !== entry.direction || fresh.wait || (fresh.contradictions || 0) >= 2 || freshConf < threshold) {
+                        emit({ type: 'staleSkip', message: `Signal changed on ${entry.name} - skipping for a fresher entry.` });
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                        continue;
+                    }
+                    confirmed = { ...entry, confidence: freshConf };
+                }
+            } else if (DIGIT_TYPES.includes(state.settings.tradeType)) {
+                const digitData = await fetchDigitDistribution(entry.symbol);
+                const sc = scoreDigitDistribution(state.settings.tradeType, digitData?.distribution);
+                const gate = state.settings.safeMode ? 72 : 55;
+                if (!sc || sc.confidence < gate) {
+                    emit({ type: 'staleSkip', message: 'Digit edge faded - rescanning.' });
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    continue;
+                }
+                confirmed = { ...entry, direction: sc.direction, barrier: sc.barrier, confidence: sc.confidence };
+            }
+        } catch (e) {
+            /* if re-verify fails, fall back to original entry */
+        }
+
+        const result = await placeTrade(confirmed, state.settings);
         if (!state.running) break;
 
         if (result.error) {
@@ -524,7 +577,7 @@ async function loop() {
             break;
         }
 
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 300));
     }
 }
 
