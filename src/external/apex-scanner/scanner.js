@@ -10,7 +10,10 @@ export function safetyColor(s) {
 // Digit bias from a live last-digit tick buffer (Deriv real ticks, not hardcoded).
 export function analyzeDigits(ticks) {
   if (!ticks || ticks.length < 20) return null;
-  const digits = ticks.map(t => { const s = String(t); return +s[s.length - 1]; });
+  const digits = ticks.map(t => {
+    const clean = String(t).replace(/[^0-9]/g, '');
+    return clean.length ? +clean[clean.length - 1] : 0;
+  });
   const counts = Array(10).fill(0); digits.forEach(d => counts[d]++);
   const even = digits.filter(d => d % 2 === 0).length, odd = digits.length - even;
   const overs = digits.filter(d => d > 5).length, unders = digits.filter(d => d < 5).length;

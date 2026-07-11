@@ -207,6 +207,12 @@ function getMarkets(settings) {
         .slice(0, 20);
 }
 
+function decimalsFromPip(pip, fallback = 2) {
+    if (typeof pip !== 'number' || !Number.isFinite(pip)) return fallback;
+    if (pip >= 1) return Math.max(0, Math.round(pip));
+    return Math.max(0, Math.round(Math.log10(1 / pip)));
+}
+
 async function fetchDigitDistribution(symbol, count = 1000) {
     const response = await api_base.api.send({
         ticks_history: symbol,
@@ -216,7 +222,8 @@ async function fetchDigitDistribution(symbol, count = 1000) {
         adjust_start_time: 1,
     });
     const prices = response?.history?.prices || [];
-    return analyzeDigits(prices);
+    const decimals = decimalsFromPip(response?.pip_size);
+    return analyzeDigits(prices.map(p => Number(p).toFixed(decimals)));
 }
 
 async function findEntry(settings) {

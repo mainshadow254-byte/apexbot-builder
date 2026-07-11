@@ -70,6 +70,17 @@ async function getCandles(symbol, { granularity = CANDLE_GRANULARITY, count = CA
     return resp; // resp.candles = [{ epoch, open, high, low, close }]
 }
 
+function decimalsFromPip(pip, fallback = 2) {
+    if (typeof pip !== 'number' || !Number.isFinite(pip)) return fallback;
+    if (pip >= 1) return Math.max(0, Math.round(pip));
+    return Math.max(0, Math.round(Math.log10(1 / pip)));
+}
+
+function formatDigitQuote(quote, decimals) {
+    const n = Number(quote);
+    return Number.isFinite(n) ? n.toFixed(decimals) : String(quote);
+}
+
 async function ensureDigits(symbol, minTicks = 25, timeoutMs = 6000) {
     if (currentTickSymbol !== symbol || !window._digits || window._digits.length === 0) {
         try {
@@ -95,8 +106,11 @@ async function ensureDigits(symbol, minTicks = 25, timeoutMs = 6000) {
                 adjust_start_time: 1,
             });
             const prices = r && r.history && Array.isArray(r.history.prices) ? r.history.prices : [];
+            const decimals = decimalsFromPip(r && r.pip_size, window._digitDecimals || 2);
             if (prices.length) {
-                window._digits = prices.concat(window._digits || []).slice(-100);
+                const formatted = prices.map(p => formatDigitQuote(p, decimals));
+                window._digits = formatted.concat(window._digits || []).slice(-100);
+                window._digitDecimals = decimals;
             }
         } catch (e) {
             /* ignore */
@@ -140,6 +154,7 @@ async function subscribeDigits(symbol) {
         tickStreamSub = null;
     }
     window._digits = [];
+    window._digitDecimals = undefined;
     currentTickSymbol = symbol;
     try {
         await apiSend({ ticks: symbol, subscribe: 1 });
@@ -151,9 +166,14 @@ async function subscribeDigits(symbol) {
         if (stream && stream.subscribe) {
             tickStreamSub = stream.subscribe(({ data }) => {
                 if (data && data.msg_type === 'tick' && data.tick && data.tick.symbol === symbol) {
+                    const t = data.tick;
+                    const fallbackDecimals = (String(t.quote).split('.')[1] || '').length || window._digitDecimals || 2;
+                    const decimals = decimalsFromPip(t.pip_size, fallbackDecimals);
+                    const formatted = formatDigitQuote(t.quote, decimals);
                     window._digits = window._digits || [];
-                    window._digits.push(data.tick.quote);
+                    window._digits.push(formatted);
                     if (window._digits.length > 100) window._digits.shift();
+                    window._digitDecimals = decimals;
                 }
             });
         }
