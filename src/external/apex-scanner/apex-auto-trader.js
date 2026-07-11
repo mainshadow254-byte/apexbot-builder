@@ -58,6 +58,8 @@ function scoreOverUnder(distribution, totalTicks) {
         edge: best.edge,
         confidence: Math.round(winProb * 100),
         edgePct: Math.round(best.edge * 1000) / 10,
+        lowPayout: best.structural >= 0.7,
+        riskWarning: best.structural >= 0.75 ? 'High win-rate but small payout - losses cost more than wins pay.' : '',
         note: 'Structural odds (RNG) - ranked by recent edge, not a prediction',
     };
 }
@@ -83,6 +85,8 @@ function scoreEvenOdd(distribution, totalTicks) {
         edge,
         confidence: Math.round(observed * 100),
         edgePct: Math.round(edge * 1000) / 10,
+        lowPayout: false,
+        riskWarning: '',
         note: 'Even/Odd is ~50/50 (RNG) - recent lean only, essentially random',
     };
 }
@@ -95,12 +99,17 @@ function scoreEvenOdd(distribution, totalTicks) {
 function scoreMatchesDiffers(distribution, totalTicks) {
     const total = totalTicks || distribution.reduce((a, b) => a + b, 0) || 1;
     const freq = distribution.map(c => c / total);
+
+    // Predict the LEAST-frequent digit for DIFFERS (least likely to be matched).
     let minD = 0;
     for (let d = 1; d <= 9; d++) if (freq[d] < freq[minD]) minD = d;
-    const differsWin = 1 - freq[minD];
+
+    const observedDiffersWin = 1 - freq[minD];
     const structuralDiffers = 0.9;
-    const edge = differsWin - structuralDiffers;
-    const winProb = structuralDiffers * 0.85 + differsWin * 0.15;
+    const edge = observedDiffersWin - structuralDiffers;
+    const winProb = structuralDiffers * 0.9 + observedDiffersWin * 0.1;
+    const approxPayoutRatio = 0.11;
+
     return {
         direction: 'DIFFERS',
         barrier: minD,
@@ -108,6 +117,9 @@ function scoreMatchesDiffers(distribution, totalTicks) {
         edge,
         confidence: Math.round(winProb * 100),
         edgePct: Math.round(edge * 1000) / 10,
+        payoutRatio: approxPayoutRatio,
+        lowPayout: true,
+        riskWarning: 'High win-rate, TINY payout - one loss erases many wins. Martingale risk is severe here.',
         note: 'Differs ~90% structural (tiny payout) - honest odds, not a prediction',
     };
 }
@@ -132,6 +144,7 @@ const state = {
     openContractId: null,
     pocSub: null,
     stopReason: null,
+    differsRiskWarned: false,
     listeners: new Set(),
 };
 
@@ -194,7 +207,7 @@ function getMarkets(settings) {
         .slice(0, 20);
 }
 
-async function fetchDigitDistribution(symbol, count = 40) {
+async function fetchDigitDistribution(symbol, count = 200) {
     const response = await api_base.api.send({
         ticks_history: symbol,
         style: 'ticks',
@@ -259,6 +272,7 @@ async function findEntry(settings) {
                 entry: row.barrier !== undefined ? `${row.direction} ${row.barrier}` : row.direction,
                 confidence: row.confidence,
                 edgePct: row.edgePct,
+                lowPayout: !!row.lowPayout,
                 note: row.note,
             })),
         });
@@ -477,6 +491,14 @@ async function loop() {
                 const maxStake = num(state.settings.maxStake, 0);
                 if (maxStake > 0 && nextStake > maxStake) nextStake = maxStake;
                 state.currentStake = nextStake;
+                if (state.settings.tradeType === 'Matches / Differs' && !state.differsRiskWarned) {
+                    state.differsRiskWarned = true;
+                    emit({
+                        type: 'riskWarning',
+                        message:
+                            'Differs loss triggered martingale - recovery requires many tiny wins. Consider disabling martingale for Differs.',
+                    });
+                }
             }
         }
 
@@ -526,6 +548,7 @@ export function startAutoTrader(settings) {
     state.won = 0;
     state.lost = 0;
     state.stopReason = null;
+    state.differsRiskWarned = false;
     state.running = true;
 
     emit({ type: 'started', ...snapshot() });

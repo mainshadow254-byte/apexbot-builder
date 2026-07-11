@@ -188,6 +188,13 @@
         color: #ff444f;
     }
 
+    &__lowpay {
+        margin-left: 6px;
+        color: #ffb547;
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+
     &__toasts {
         position: fixed;
         top: 80px;

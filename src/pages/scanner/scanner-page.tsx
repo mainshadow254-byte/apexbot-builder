@@ -28,6 +28,7 @@ type TScanRow = {
     entry?: string;
     confidence: number;
     edgePct?: number;
+    lowPayout?: boolean;
     wait?: boolean;
     note?: string;
 };
@@ -100,6 +101,8 @@ const ScannerPage = () => {
                 setToasts(current => [...current, { id, win: evt.isWin, profit: evt.profit }]);
                 window.setTimeout(() => setToasts(current => current.filter(item => item.id !== id)), 4000);
             } else if (evt.type === 'tradeError') {
+                setStatusMsg(`Warning: ${evt.message}`);
+            } else if (evt.type === 'riskWarning') {
                 setStatusMsg(`Warning: ${evt.message}`);
             } else if (evt.type === 'started') {
                 setStatusMsg('Smart AI started. Scanning for a clean entry...');
@@ -300,7 +303,18 @@ const ScannerPage = () => {
                     <div className={`apex-ai__row ${digitTable ? 'apex-ai__row--digit' : ''}`} key={row.symbol}>
                         <span>{row.name}</span>
                         {digitTable ? (
-                            <span className='pos'>{row.entry}</span>
+                            <span className='pos'>
+                                {row.entry}
+                                {row.lowPayout && (
+                                    <span
+                                        className='apex-ai__lowpay'
+                                        title='High win-rate but tiny payout - risky with martingale'
+                                    >
+                                        {' '}
+                                        low payout
+                                    </span>
+                                )}
+                            </span>
                         ) : (
                             <span className={row.direction === 'RISE' ? 'pos' : 'neg'}>
                                 {row.wait ? 'WAIT' : row.direction}
