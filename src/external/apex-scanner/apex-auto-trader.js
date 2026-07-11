@@ -207,7 +207,7 @@ function getMarkets(settings) {
         .slice(0, 20);
 }
 
-async function fetchDigitDistribution(symbol, count = 200) {
+async function fetchDigitDistribution(symbol, count = 1000) {
     const response = await api_base.api.send({
         ticks_history: symbol,
         style: 'ticks',
