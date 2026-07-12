@@ -1,4 +1,4 @@
-import { clearCodeVerifier, getCodeVerifier, isProduction } from '@/components/shared';
+import { DERIV_OAUTH_CLIENT_ID, clearCodeVerifier, getCodeVerifier, isProduction } from '@/components/shared';
 import { ErrorLogger } from '@/utils/error-logger';
 import brandConfig from '../../brand.config.json';
 
@@ -133,7 +133,7 @@ export class OAuthTokenExchangeService {
             // - client_id: your OAuth2 client ID
             // - code_verifier: the PKCE code verifier (proves we initiated the auth flow)
 
-            const clientId = process.env.CLIENT_ID;
+            const clientId = process.env.CLIENT_ID || DERIV_OAUTH_CLIENT_ID;
             if (!clientId) {
                 ErrorLogger.error('OAuth', 'CLIENT_ID environment variable is not set');
                 return {

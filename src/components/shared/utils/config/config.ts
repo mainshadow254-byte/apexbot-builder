@@ -2,6 +2,8 @@ import { DerivWSAccountsService } from '@/services/derivws-accounts.service';
 import { OAuthTokenExchangeService } from '@/services/oauth-token-exchange.service';
 import brandConfig from '../../../../../brand.config.json';
 
+export const DERIV_OAUTH_CLIENT_ID = '33IgwODEqGFMAW4JqwFB7';
+
 // =============================================================================
 // Constants - Domain & Server Configuration (from brand.config.json)
 // =============================================================================
@@ -228,7 +230,7 @@ export const generateOAuthURL = async (prompt?: string) => {
         // Use brand config for login URLs
         const environment = isProduction() ? 'production' : 'staging';
         const hostname = brandConfig?.platform.auth2_url?.[environment];
-        const clientId = process.env.CLIENT_ID;
+        const clientId = process.env.CLIENT_ID || DERIV_OAUTH_CLIENT_ID;
 
         if (hostname && clientId) {
             // Generate CSRF token for security
