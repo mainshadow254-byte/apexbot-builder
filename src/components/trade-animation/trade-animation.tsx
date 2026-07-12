@@ -10,6 +10,7 @@ import { Localize, localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
 /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
 /* [/AI] */
+import BotSettingsModal from '../layout/footer/BotSettingsModal';
 import Button from '../shared_ui/button';
 import Tooltip from '../shared_ui/tooltip/tooltip';
 import CircularWrapper from './circular-wrapper';
@@ -28,8 +29,16 @@ const TradeAnimation = observer(({ className, should_show_overlay }: TTradeAnima
     const { isMobile } = useDevice();
 
     const { is_contract_completed, profit } = summary_card;
-    const { contract_stage, is_stop_button_visible, is_stop_button_disabled, onRunButtonClick, onStopBotClick } =
-        run_panel;
+    const {
+        contract_stage,
+        is_bot_settings_modal_open,
+        is_stop_button_visible,
+        is_stop_button_disabled,
+        onBotSettingsRunCancel,
+        onBotSettingsRunSave,
+        onRunButtonClick,
+        onStopBotClick,
+    } = run_panel;
     const [shouldDisable, setShouldDisable] = React.useState(false);
     const is_unavailable_for_payment_agent = false;
 
@@ -77,6 +86,12 @@ const TradeAnimation = observer(({ className, should_show_overlay }: TTradeAnima
             }, 1000);
         }
     }, [shouldDisable, is_stop_button_visible]);
+
+    React.useEffect(() => {
+        if (!is_bot_settings_modal_open && !is_stop_button_visible) {
+            setShouldDisable(false);
+        }
+    }, [is_bot_settings_modal_open, is_stop_button_visible]);
 
     const status_classes = ['', '', ''];
     const is_purchase_sent = contract_stage === (contract_stages.PURCHASE_SENT as unknown);
@@ -236,6 +251,9 @@ const TradeAnimation = observer(({ className, should_show_overlay }: TTradeAnima
                     ))}
                 </div>
             </div>
+            {is_bot_settings_modal_open && (
+                <BotSettingsModal onClose={onBotSettingsRunCancel} onSave={onBotSettingsRunSave} />
+            )}
         </div>
     );
 });
