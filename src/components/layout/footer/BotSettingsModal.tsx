@@ -9,12 +9,7 @@ const FIELDS = [
     { key: 'apex_bot_maxstake', label: 'Max Stake (0 = off)', defaultValue: '0' },
 ];
 
-type TBotSettingsModal = {
-    onClose: () => void;
-    onSave?: () => void;
-};
-
-const BotSettingsModal = ({ onClose, onSave }: TBotSettingsModal) => {
+const BotSettingsModal = ({ onClose }: { onClose: () => void }) => {
     const [values, setValues] = useState<Record<string, string>>(() => {
         const initialValues: Record<string, string> = {};
         FIELDS.forEach(field => {
@@ -40,7 +35,6 @@ const BotSettingsModal = ({ onClose, onSave }: TBotSettingsModal) => {
             }
         });
         setSaved(true);
-        onSave?.();
         window.setTimeout(onClose, 700);
     };
 

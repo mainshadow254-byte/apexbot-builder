@@ -41,8 +41,6 @@ export default class RunPanelStore {
             is_statistics_info_modal_open: observable,
             is_drawer_open: observable,
             is_dialog_open: observable,
-            is_bot_settings_modal_open: observable,
-            is_bot_settings_pending_run: observable,
             is_loss_alarm_enabled: observable,
             is_sell_requested: observable,
             run_id: observable,
@@ -58,10 +56,6 @@ export default class RunPanelStore {
             setHasOpenContract: action,
             setIsRunning: action,
             onRunButtonClick: action,
-            proceedWithRun: action,
-            openBotSettingsForRun: action,
-            onBotSettingsRunSave: action,
-            onBotSettingsRunCancel: action,
             is_contract_buying_in_progress: observable,
             SetpurchaseInProgress: action,
             onStopButtonClick: action,
@@ -113,8 +107,6 @@ export default class RunPanelStore {
     is_statistics_info_modal_open = false;
     is_drawer_open = true;
     is_dialog_open = false;
-    is_bot_settings_modal_open = false;
-    is_bot_settings_pending_run = false;
     is_loss_alarm_enabled = localStorage.getItem('apex_loss_alarm_enabled') !== 'false';
     is_sell_requested = false;
     show_bot_stop_message = false;
@@ -172,43 +164,6 @@ export default class RunPanelStore {
     };
 
     onRunButtonClick = async () => {
-        const { client } = this.core;
-        const is_ios = mobileOSDetect() === 'iOS';
-        this.dbot.saveRecentWorkspace();
-        this.dbot.unHighlightAllBlocks();
-        if (!client.is_logged_in) {
-            this.showLoginDialog();
-            return;
-        }
-
-        /**
-         * Due to Apple's policy on cellular data usage in ios audioElement.play() should be initially called on
-         * user action(e.g click/touch) to be downloaded, otherwise throws an error. Also it should be called
-         * syncronously, so keep above await.
-         */
-        if (is_ios || isSafari()) this.preloadAudio();
-
-        this.openBotSettingsForRun();
-    };
-
-    openBotSettingsForRun = () => {
-        this.is_bot_settings_pending_run = true;
-        this.is_bot_settings_modal_open = true;
-    };
-
-    onBotSettingsRunCancel = () => {
-        this.is_bot_settings_pending_run = false;
-        this.is_bot_settings_modal_open = false;
-    };
-
-    onBotSettingsRunSave = () => {
-        const should_run = this.is_bot_settings_pending_run;
-        this.is_bot_settings_pending_run = false;
-        this.is_bot_settings_modal_open = false;
-        if (should_run) this.proceedWithRun();
-    };
-
-    proceedWithRun = () => {
         let timer_counter = 1;
         if (window.sendRequestsStatistic) {
             performance.clearMeasures();
@@ -224,7 +179,21 @@ export default class RunPanelStore {
             }, 10000);
         }
         const { summary_card } = this.root_store;
-        const { ui } = this.core;
+        const { client, ui } = this.core;
+        const is_ios = mobileOSDetect() === 'iOS';
+        this.dbot.saveRecentWorkspace();
+        this.dbot.unHighlightAllBlocks();
+        if (!client.is_logged_in) {
+            this.showLoginDialog();
+            return;
+        }
+
+        /**
+         * Due to Apple's policy on cellular data usage in ios audioElement.play() should be initially called on
+         * user action(e.g click/touch) to be downloaded, otherwise throws an error. Also it should be called
+         * syncronously, so keep above await.
+         */
+        if (is_ios || isSafari()) this.preloadAudio();
 
         this.registerBotListeners();
 
