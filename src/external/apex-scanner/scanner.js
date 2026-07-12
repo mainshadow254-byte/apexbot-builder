@@ -42,47 +42,56 @@ export function analyzeReversion(ticks, candles) {
   const roc = TA.roc(px, 5);
   const hi20 = TA.highest(px, 20);
   const lo20 = TA.lowest(px, 20);
-  // Direction of the last move (did it just tick up or down?)
+  // Direction of the latest move (must be the actual last tick, not any tick in the recent window).
   const prev = px[px.length - 2];
-  const justUp = price > prev;
-  const justDown = price < prev;
+  const prior = px[px.length - 3];
+  const prePrior = px[px.length - 4];
+  const latestUp = price > prev;
+  const latestDown = price < prev;
+  const recent4 = px.slice(-4);
+  const recentHigh = Math.max(...recent4);
+  const recentLow = Math.min(...recent4);
 
-  // Tick-sequence reversal confirmation (last 3 ticks).
-  const last3 = px.slice(-4);
-  let downTicks = 0, upTicks = 0;
-  for (let i = 1; i < last3.length; i++) {
-    if (last3[i] < last3[i - 1]) downTicks++;
-    if (last3[i] > last3[i - 1]) upTicks++;
-  }
+  // Tick reversal confirmation: the final tick must turn against the prior push.
+  // This avoids the old false-positive where any earlier down/up tick in the last
+  // three moves counted as a reversal even if the latest tick was still extending.
+  const hadUpPush = prev > prior || prior > prePrior;
+  const hadDownPush = prev < prior || prior < prePrior;
+  const fallReversal = latestDown && hadUpPush;
+  const riseReversal = latestUp && hadDownPush;
 
   let fall = 0, rise = 0;
   const reasons = [];
 
   // --- FALL signals (bet against an overbought top) ---
   const rsiFall = rsi != null && rsi >= 70;
-  const bbFall = bb && price >= bb.upper;
+  const bbFall = bb && recentHigh >= bb.upper;
+  const localHighFall = hi20 != null && recentHigh >= hi20;
   if (rsiFall) { fall += 3; reasons.push({ ok: true, txt: `RSI ${rsi.toFixed(0)} overbought - reversion FALL.` }); }
-  if (bbFall) { fall += 3; reasons.push({ ok: true, txt: `Price at/above upper Bollinger - reversion FALL.` }); }
+  if (bbFall) { fall += 3; reasons.push({ ok: true, txt: `Recent tick touched upper Bollinger - reversion FALL.` }); }
   if (roc != null && roc > 0 && roc < 0.03) { fall += 2; reasons.push({ ok: true, txt: `Upward momentum fading - reversion FALL.` }); }
-  if (downTicks >= 1) { fall += 2; reasons.push({ ok: true, txt: `Ticks reversing downward - momentum FALL.` }); }
-  if (hi20 != null && price >= hi20) { fall += 1; reasons.push({ ok: true, txt: `At 20-tick local high - stretched, FALL.` }); }
+  if (fallReversal) { fall += 2; reasons.push({ ok: true, txt: `Latest tick reversed downward after an up-push - momentum FALL.` }); }
+  if (localHighFall) { fall += 1; reasons.push({ ok: true, txt: `Recent tick hit 20-tick local high - stretched, FALL.` }); }
 
   // --- RISE signals (bet against an oversold bottom) ---
   const rsiRise = rsi != null && rsi <= 30;
-  const bbRise = bb && price <= bb.lower;
+  const bbRise = bb && recentLow <= bb.lower;
+  const localLowRise = lo20 != null && recentLow <= lo20;
   if (rsiRise) { rise += 3; reasons.push({ ok: true, txt: `RSI ${rsi.toFixed(0)} oversold - reversion RISE.` }); }
-  if (bbRise) { rise += 3; reasons.push({ ok: true, txt: `Price at/below lower Bollinger - reversion RISE.` }); }
+  if (bbRise) { rise += 3; reasons.push({ ok: true, txt: `Recent tick touched lower Bollinger - reversion RISE.` }); }
   if (roc != null && roc < 0 && roc > -0.03) { rise += 2; reasons.push({ ok: true, txt: `Downward momentum fading - reversion RISE.` }); }
-  if (upTicks >= 1) { rise += 2; reasons.push({ ok: true, txt: `Ticks reversing upward - momentum RISE.` }); }
-  if (lo20 != null && price <= lo20) { rise += 1; reasons.push({ ok: true, txt: `At 20-tick local low - stretched, RISE.` }); }
+  if (riseReversal) { rise += 2; reasons.push({ ok: true, txt: `Latest tick reversed upward after a down-push - momentum RISE.` }); }
+  if (localLowRise) { rise += 1; reasons.push({ ok: true, txt: `Recent tick hit 20-tick local low - stretched, RISE.` }); }
 
   const top = Math.max(fall, rise);
   const direction = fall >= rise ? 'PUT' : 'CALL';   // PUT = FALL, CALL = RISE
   const opposite = direction === 'PUT' ? rise : fall;
 
-  // 2-of-3 confluence: (RSI extreme OR Bollinger touch) AND a tick reversal in-direction.
-  const fallConfluence = (rsiFall || bbFall) && downTicks >= 1;
-  const riseConfluence = (rsiRise || bbRise) && upTicks >= 1;
+  // 2-of-3 extreme confluence (RSI, Bollinger, local extreme) plus latest-tick reversal.
+  const fallExtremeVotes = Number(rsiFall) + Number(Boolean(bbFall)) + Number(localHighFall);
+  const riseExtremeVotes = Number(rsiRise) + Number(Boolean(bbRise)) + Number(localLowRise);
+  const fallConfluence = fallExtremeVotes >= 2 && fallReversal;
+  const riseConfluence = riseExtremeVotes >= 2 && riseReversal;
   const coreConfluence = (direction === 'PUT' && fallConfluence) || (direction === 'CALL' && riseConfluence);
   const MIN_SCORE = 6;
   const strong = top >= MIN_SCORE && top >= opposite + 3 && coreConfluence;
@@ -94,7 +103,7 @@ export function analyzeReversion(ticks, candles) {
 
   const wait = !strong;
   const contradictions = strong ? 0 : 1;             // valid fire => 0 (passes gate)
-  const score = Math.max(0, Math.min(100, Math.round(50 + (top - opposite) * 6)));
+  const score = Math.max(0, Math.min(100, Math.round(52 + (top - opposite) * 6)));
   const color = strong
     ? { key: 'green', label: 'SAFE', css: '#2fe38b' }
     : { key: 'amber', label: 'WAIT', css: '#ffb547' };
@@ -103,7 +112,10 @@ export function analyzeReversion(ticks, candles) {
   return {
     score, color, direction, confidence, contradictions, wait, reasons,
     reversion: true,
-    metrics: { rsi, roc, price, bbUpper: bb?.upper, bbLower: bb?.lower },
+    metrics: {
+      rsi, roc, price, bbUpper: bb?.upper, bbLower: bb?.lower,
+      fallExtremeVotes, riseExtremeVotes, fallReversal, riseReversal,
+    },
   };
 }
 
