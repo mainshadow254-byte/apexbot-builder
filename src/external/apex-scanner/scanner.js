@@ -47,8 +47,7 @@ export function analyzeReversion(ticks, candles) {
   const justUp = price > prev;
   const justDown = price < prev;
 
-  // Require confluence at a real extreme, plus tick-sequence confirmation.
-  // Count how many of the last 3 ticks moved in the reversion direction.
+  // Tick-sequence reversal confirmation (last 3 ticks).
   const last3 = px.slice(-4);
   let downTicks = 0, upTicks = 0;
   for (let i = 1; i < last3.length; i++) {
@@ -60,55 +59,49 @@ export function analyzeReversion(ticks, candles) {
   const reasons = [];
 
   // --- FALL signals (bet against an overbought top) ---
-  if (rsi != null && rsi >= 72) { fall += 3; reasons.push({ ok: true, txt: `RSI ${rsi.toFixed(0)} overbought - reversion FALL.` }); }
-  if (bb && price >= bb.upper) { fall += 3; reasons.push({ ok: true, txt: `Price at/above upper Bollinger - reversion FALL.` }); }
+  const rsiFall = rsi != null && rsi >= 70;
+  const bbFall = bb && price >= bb.upper;
+  if (rsiFall) { fall += 3; reasons.push({ ok: true, txt: `RSI ${rsi.toFixed(0)} overbought - reversion FALL.` }); }
+  if (bbFall) { fall += 3; reasons.push({ ok: true, txt: `Price at/above upper Bollinger - reversion FALL.` }); }
   if (roc != null && roc > 0 && roc < 0.03) { fall += 2; reasons.push({ ok: true, txt: `Upward momentum fading - reversion FALL.` }); }
-  if (justDown) { fall += 2; reasons.push({ ok: true, txt: `Just reversed downward - momentum FALL.` }); }
+  if (downTicks >= 1) { fall += 2; reasons.push({ ok: true, txt: `Ticks reversing downward - momentum FALL.` }); }
   if (hi20 != null && price >= hi20) { fall += 1; reasons.push({ ok: true, txt: `At 20-tick local high - stretched, FALL.` }); }
 
   // --- RISE signals (bet against an oversold bottom) ---
-  if (rsi != null && rsi <= 28) { rise += 3; reasons.push({ ok: true, txt: `RSI ${rsi.toFixed(0)} oversold - reversion RISE.` }); }
-  if (bb && price <= bb.lower) { rise += 3; reasons.push({ ok: true, txt: `Price at/below lower Bollinger - reversion RISE.` }); }
+  const rsiRise = rsi != null && rsi <= 30;
+  const bbRise = bb && price <= bb.lower;
+  if (rsiRise) { rise += 3; reasons.push({ ok: true, txt: `RSI ${rsi.toFixed(0)} oversold - reversion RISE.` }); }
+  if (bbRise) { rise += 3; reasons.push({ ok: true, txt: `Price at/below lower Bollinger - reversion RISE.` }); }
   if (roc != null && roc < 0 && roc > -0.03) { rise += 2; reasons.push({ ok: true, txt: `Downward momentum fading - reversion RISE.` }); }
-  if (justUp) { rise += 2; reasons.push({ ok: true, txt: `Just reversed upward - momentum RISE.` }); }
+  if (upTicks >= 1) { rise += 2; reasons.push({ ok: true, txt: `Ticks reversing upward - momentum RISE.` }); }
   if (lo20 != null && price <= lo20) { rise += 1; reasons.push({ ok: true, txt: `At 20-tick local low - stretched, RISE.` }); }
 
   const top = Math.max(fall, rise);
   const direction = fall >= rise ? 'PUT' : 'CALL';   // PUT = FALL, CALL = RISE
   const opposite = direction === 'PUT' ? rise : fall;
 
-  // Stronger confirmation: extreme + Bollinger touch + reversal already underway.
-  const fallConfluence =
-    (rsi != null && rsi >= 74) &&
-    (bb && price >= bb.upper) &&
-    downTicks >= 1;
-  const riseConfluence =
-    (rsi != null && rsi <= 26) &&
-    (bb && price <= bb.lower) &&
-    upTicks >= 1;
-
+  // 2-of-3 confluence: (RSI extreme OR Bollinger touch) AND a tick reversal in-direction.
+  const fallConfluence = (rsiFall || bbFall) && downTicks >= 1;
+  const riseConfluence = (rsiRise || bbRise) && upTicks >= 1;
   const coreConfluence = (direction === 'PUT' && fallConfluence) || (direction === 'CALL' && riseConfluence);
-  const MIN_SCORE = 7;
-  const strong = top >= MIN_SCORE && top >= opposite + 4 && coreConfluence;
+  const MIN_SCORE = 6;
+  const strong = top >= MIN_SCORE && top >= opposite + 3 && coreConfluence;
 
-  // Confidence honestly reflects one-sided reversion strength (cap realistic).
-  let confidence = Math.round(Math.min(1, top / 11) * 100);
-  if (top < MIN_SCORE || top < opposite + 4 || !coreConfluence) confidence = Math.min(confidence, 45);
-  if (!coreConfluence) {
-    reasons.push({ ok: false, txt: 'WAIT - reversion not confirmed at a true extreme.' });
-  }
+  // Confidence: a valid fire lands ~60-75 (top 6->67, 7->78, cap 100). Non-strong stays low.
+  let confidence = Math.round(Math.min(1, top / 9) * 100);
+  if (!strong) confidence = Math.min(confidence, 45);
+  confidence = Math.max(0, Math.min(100, confidence));
 
-  // Map to the same verdict shape analyze() returns so downstream code is unchanged.
   const wait = !strong;
-  const contradictions = strong ? 0 : 1;
-  const score = Math.round(50 + (top - opposite) * 6);  // rough quality proxy
+  const contradictions = strong ? 0 : 1;             // valid fire => 0 (passes gate)
+  const score = Math.max(0, Math.min(100, Math.round(50 + (top - opposite) * 6)));
   const color = strong
     ? { key: 'green', label: 'SAFE', css: '#2fe38b' }
     : { key: 'amber', label: 'WAIT', css: '#ffb547' };
+  if (!strong) reasons.push({ ok: false, txt: 'WAIT - reversion not confirmed at a true extreme.' });
 
   return {
-    score: Math.max(0, Math.min(100, score)),
-    color, direction, confidence, contradictions, wait, reasons,
+    score, color, direction, confidence, contradictions, wait, reasons,
     reversion: true,
     metrics: { rsi, roc, price, bbUpper: bb?.upper, bbLower: bb?.lower },
   };

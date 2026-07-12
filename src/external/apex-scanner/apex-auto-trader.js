@@ -166,7 +166,12 @@ const conviction = {
     lastKey: null,
     streak: 0,
 };
-const REQUIRED_STREAK = 3; // stronger conviction, fewer/surer entries
+// Reversion extremes are fleeting and cannot survive multiple scans, so Rise/Fall
+// needs only 1 confirming scan (the confirmed extreme IS the confirmation).
+// Digits keep the stricter streak.
+function requiredStreakFor(tradeType) {
+    return tradeType === 'Rise / Fall' ? 1 : 3;
+}
 
 function snapshot() {
     return {
@@ -236,6 +241,7 @@ function requireConviction(candidate) {
     const key = `${candidate.tradeType}|${candidate.symbol}|${candidate.direction}${
         candidate.barrier !== undefined ? ` ${candidate.barrier}` : ''
     }`;
+    const required = requiredStreakFor(candidate.tradeType);
     if (conviction.lastKey === key) {
         conviction.streak += 1;
     } else {
@@ -243,8 +249,8 @@ function requireConviction(candidate) {
         conviction.streak = 1;
     }
 
-    if (conviction.streak < REQUIRED_STREAK) {
-        emit({ type: 'confirming', key, streak: conviction.streak, required: REQUIRED_STREAK, name: candidate.name });
+    if (conviction.streak < required) {
+        emit({ type: 'confirming', key, streak: conviction.streak, required, name: candidate.name });
         return null;
     }
 
