@@ -2,6 +2,7 @@ import React from 'react';
 import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
 import ContractResultOverlay from '@/components/contract-result-overlay';
+import BotSettingsModal from '@/components/layout/footer/BotSettingsModal';
 import { DBOT_TABS } from '@/constants/bot-contents';
 import { contract_stages } from '@/constants/contract-stage';
 import { useStore } from '@/hooks/useStore';
@@ -21,6 +22,28 @@ type TTradeAnimation = {
     should_show_overlay?: boolean;
 };
 
+const PROMPT_KEY_MAP = [
+    { match: 'Trade Amount', key: 'apex_bot_stake', fallback: '1' },
+    { match: 'Martingale Multiplier', key: 'apex_bot_multiplier', fallback: '2' },
+    { match: 'Stop Loss', key: 'apex_bot_stoploss', fallback: '0' },
+    { match: 'Take Profit', key: 'apex_bot_takeprofit', fallback: '0' },
+    { match: 'Max Stake', key: 'apex_bot_maxstake', fallback: '0' },
+];
+
+const installApexPromptResolver = () => {
+    if (typeof window === 'undefined') return;
+    window.prompt = (message?: string) => {
+        const text = String(message || '');
+        const field = PROMPT_KEY_MAP.find(item => text.includes(item.match));
+        if (!field) return '';
+        try {
+            return localStorage.getItem(field.key) || field.fallback;
+        } catch {
+            return field.fallback;
+        }
+    };
+};
+
 const TradeAnimation = observer(({ className, should_show_overlay }: TTradeAnimation) => {
     const { dashboard, run_panel, summary_card, blockly_store } = useStore();
     const { active_tab } = dashboard;
@@ -31,6 +54,7 @@ const TradeAnimation = observer(({ className, should_show_overlay }: TTradeAnima
     const { contract_stage, is_stop_button_visible, is_stop_button_disabled, onRunButtonClick, onStopBotClick } =
         run_panel;
     const [shouldDisable, setShouldDisable] = React.useState(false);
+    const [showRunSettings, setShowRunSettings] = React.useState(false);
     const is_unavailable_for_payment_agent = false;
 
     // Get the load_modal store to monitor strategy deletions
@@ -112,6 +136,19 @@ const TradeAnimation = observer(({ className, should_show_overlay }: TTradeAnima
     // 1. The user is NOT in the bot builder tab, AND
     // 2. There are no bots
     const should_show_tooltip = !is_stop_button_visible && !is_bot_builder_tab && has_no_bots;
+
+    const startBotAfterSettings = () => {
+        setShowRunSettings(false);
+        installApexPromptResolver();
+        onRunButtonClick();
+        /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
+        /* [/AI] */
+    };
+
+    const cancelRunSettings = () => {
+        setShowRunSettings(false);
+        setShouldDisable(false);
+    };
 
     const button_props = React.useMemo(() => {
         if (is_stop_button_visible && !is_stop_button_disabled) {
@@ -204,9 +241,7 @@ const TradeAnimation = observer(({ className, should_show_overlay }: TTradeAnima
                             onStopBotClick();
                             return;
                         }
-                        onRunButtonClick();
-                        /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
-                        /* [/AI] */
+                        setShowRunSettings(true);
                     }}
                     has_effect
                     {...(is_stop_button_visible || !is_unavailable_for_payment_agent
@@ -216,6 +251,7 @@ const TradeAnimation = observer(({ className, should_show_overlay }: TTradeAnima
                     {button_props.text}
                 </Button>
             )}
+            {showRunSettings && <BotSettingsModal sequential onClose={cancelRunSettings} onSave={startBotAfterSettings} />}
             <div
                 className={classNames('animation__container', className, {
                     'animation--running': contract_stage > 0,

@@ -18,6 +18,7 @@ const CONTRACT_MAP = {
 
 const BATCH_SIZE = 5;
 const BATCH_GAP_MS = 60;
+const VOLATILITY_SYMBOL_ORDER = ['R_10', '1HZ10V', 'R_25', '1HZ25V', 'R_50', '1HZ50V', 'R_75', '1HZ75V', 'R_100', '1HZ100V'];
 
 /**
  * HONEST Over/Under scorer - ranks by EDGE over the RNG baseline, not raw win-%.
@@ -272,8 +273,7 @@ function getMarkets(settings) {
             market: s.market,
             exchange_is_open: typeof s.exchange_is_open === 'number' ? s.exchange_is_open : 1,
         }))
-        .filter(s => s.symbol && (!settings.category || s.market === settings.category) && s.exchange_is_open !== 0)
-        .slice(0, 20);
+        .filter(s => s.symbol && (!settings.category || s.market === settings.category) && s.exchange_is_open !== 0);
 }
 
 function resetConviction() {
@@ -334,11 +334,10 @@ async function findEntry(settings) {
     // which are devastating for martingale and don't mean-revert cleanly.
     if (settings.tradeType === 'Rise / Fall') {
         const isVolatility = sym => /^R_\d+$/.test(String(sym)) || /^1HZ\d+V$/.test(String(sym));
-        const preferOrder = ['R_10', '1HZ10V', 'R_25', '1HZ25V', 'R_50', '1HZ50V', 'R_75', '1HZ75V', 'R_100', '1HZ100V'];
         markets = markets.filter(m => isVolatility(m.symbol));
         markets.sort((a, b) => {
-            const ia = preferOrder.indexOf(a.symbol);
-            const ib = preferOrder.indexOf(b.symbol);
+            const ia = VOLATILITY_SYMBOL_ORDER.indexOf(a.symbol);
+            const ib = VOLATILITY_SYMBOL_ORDER.indexOf(b.symbol);
             return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
         });
     }
@@ -350,6 +349,11 @@ async function findEntry(settings) {
 
     if (isDigit) {
         markets = markets.filter(isDigitCapable);
+        markets.sort((a, b) => {
+            const ia = VOLATILITY_SYMBOL_ORDER.indexOf(a.symbol);
+            const ib = VOLATILITY_SYMBOL_ORDER.indexOf(b.symbol);
+            return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+        });
     }
 
     if (isDigit && !markets.length) {

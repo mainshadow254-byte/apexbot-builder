@@ -192,7 +192,7 @@ export default class ContractsFor {
 
     async getContractsFor(symbol) {
         if (!symbol || symbol === 'na' || symbol === 'DEFAULT') {
-            console.warn('Invalid symbol provided to getContractsFor:', symbol);
+            if (symbol) console.debug('Invalid symbol provided to getContractsFor:', symbol);
             return [];
         }
 

@@ -173,6 +173,12 @@
         border-radius: 4px;
     }
 
+    &__note--danger {
+        color: #ffd9de;
+        background: rgb(255 68 79 / 12%);
+        border-left-color: #ff444f;
+    }
+
     &__scanner {
         overflow: hidden;
         border: 1px solid var(--general-section-2);

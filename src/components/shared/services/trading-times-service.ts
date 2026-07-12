@@ -67,7 +67,7 @@ class TradingTimesService {
 
             return translated_trading_times;
         } catch (error) {
-            console.error('Failed to fetch trading times:', error);
+            console.debug('Failed to fetch trading times:', error);
             throw error;
         }
     }
@@ -102,7 +102,7 @@ class TradingTimesService {
 
             return trading_times;
         } catch (error) {
-            console.error('Failed to fetch trading times from API:', error);
+            console.debug('Failed to fetch trading times from API:', error);
             throw error;
         }
     }

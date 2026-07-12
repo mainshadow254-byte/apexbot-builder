@@ -136,6 +136,10 @@ const ScannerPage = () => {
         return off;
     }, []);
 
+    useEffect(() => {
+        if (!running) setResultPopup(null);
+    }, [tradeType, category, running]);
+
     const persist = () => {
         localStorage.setItem(SETTING_KEYS.stake, stake);
         localStorage.setItem(SETTING_KEYS.takeProfit, takeProfit);
@@ -387,6 +391,13 @@ const ScannerPage = () => {
                 </label>
             </div>
 
+            {tradeType === 'Matches / Differs' && (
+                <div className='apex-ai__note apex-ai__note--danger'>
+                    <b>Matches/Differs payout warning:</b> a high win-probability contract pays very little. One loss can
+                    erase many small wins, so use Flat stake or very conservative recovery on this mode.
+                </div>
+            )}
+
             {!running ? (
                 <button className='apex-ai__start' onClick={handleStart}>
                     Start AI
@@ -418,7 +429,7 @@ const ScannerPage = () => {
             </div>
 
             <div className='apex-ai__note apex-ai__note--eval'>
-                📊 <b>To measure true win rate:</b> set Martingale OFF, a small flat Stake, and a wide Stop Loss,
+                ðŸ“Š <b>To measure true win rate:</b> set Martingale OFF, a small flat Stake, and a wide Stop Loss,
                 then run 25+ trades. Martingale is a money-management layer - turn it on only after you trust the raw edge.
             </div>
 
