@@ -1,5 +1,11 @@
 RedirectMatch 404 ^/apex-bots/(1_3_2_6|accumulators_dalembert|accumulators_martingale|accumulators_reverse_martingale|dalembert|dalembert_max-stake|martingale_max-stake|oscars_grind|oscars_grind_max-stake|reverse_dalembert|reverse_martingale)\.xml$
 
+<FilesMatch "^(index\.html)?$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</FilesMatch>
+
 Options -MultiViews
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} -f [OR]
