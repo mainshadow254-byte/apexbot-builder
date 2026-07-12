@@ -161,6 +161,9 @@ const state = {
     listeners: new Set(),
 };
 
+// Recovery state (reset on start/stop and on any win).
+const recovery = { lossPool: 0, step: 0 };
+
 // Conviction: require the same signal to persist across N consecutive scans.
 const conviction = {
     lastKey: null,
@@ -183,6 +186,8 @@ function snapshot() {
         currentStake: state.currentStake,
         consecutiveLosses: state.consecutiveLosses,
         stopReason: state.stopReason,
+        recoveryStep: recovery.step,
+        recoveryLossPool: recovery.lossPool,
     };
 }
 
@@ -208,6 +213,45 @@ export function getAutoTraderState() {
 function num(value, fallback = 0) {
     const n = parseFloat(value);
     return Number.isFinite(n) ? n : fallback;
+}
+
+/**
+ * Payout-aware recovery stake (Mesa-Milano style).
+ * After losses, compute the stake whose WIN recovers the accumulated loss pool
+ * plus a small profit target - using the contract's real payout ratio, not blind 2x.
+ * Hard-capped by maxRecoverySteps and maxStake so it can never blow the account.
+ */
+function computeNextStake(settings, lastPayoutRatio) {
+    const base = Math.max(0.35, num(settings.stake, 1));
+    const mode = settings.recoveryMode || 'mesa'; // 'mesa' | 'pls' | 'flat'
+    const maxSteps = Math.max(1, num(settings.maxRecoverySteps, 4));
+    const maxStake = num(settings.maxStake, 0); // 0 = no cap beyond steps
+
+    if (recovery.step === 0 || recovery.lossPool <= 0 || mode === 'flat') {
+        return base;
+    }
+    // Stop escalating once step cap reached - caller will halt the session.
+    if (recovery.step > maxSteps) return base;
+
+    // Real payout ratio (profit per 1 unit staked). Fallback ~0.95 if unknown.
+    const payout = lastPayoutRatio && lastPayoutRatio > 0 ? lastPayoutRatio : 0.95;
+    const target = base * 0.5; // small profit on recovery
+
+    let stake;
+    if (mode === 'pls') {
+        // Progressive Loss Scaling: gentle additive steps, safer for small accounts.
+        stake = base * (1 + recovery.step * 0.4);
+    } else {
+        // Mesa Milano: stake such that (stake * payout) >= lossPool + target.
+        stake = (recovery.lossPool + target) / payout;
+    }
+    if (maxStake > 0) stake = Math.min(stake, maxStake);
+    return Math.round(stake * 100) / 100;
+}
+
+function resetRecovery() {
+    recovery.lossPool = 0;
+    recovery.step = 0;
 }
 
 function getCurrency() {
@@ -532,6 +576,9 @@ function placeTrade(entry, settings) {
                 }
 
                 const contract_id = res?.buy?.contract_id;
+                const buyPrice = num(res?.buy?.buy_price, amount);
+                const payout = num(res?.buy?.payout, 0);
+                const payoutRatio = payout > buyPrice && buyPrice > 0 ? (payout - buyPrice) / buyPrice : 0.95;
                 if (!contract_id) {
                     clearTimeout(timeout);
                     emit({ type: 'tradeError', message: 'No contract id returned' });
@@ -558,7 +605,7 @@ function placeTrade(entry, settings) {
                                 contract.status === 'lost'
                             ) {
                                 clearTimeout(timeout);
-                                finish({ profit: num(contract.profit, 0), contract });
+                                finish({ profit: num(contract.profit, 0), contract, payoutRatio });
                             }
                         }
                     });
@@ -586,6 +633,41 @@ async function loop() {
         if (!entry) {
             await new Promise(resolve => setTimeout(resolve, 600));
             continue;
+        }
+
+        // ---- Session discipline envelope (the real edge-preserver) ----
+        const sess = state.settings;
+        const dailyLossCap = num(sess.dailyLossCap, 0);
+        const dailyTarget = num(sess.dailyTarget, 0);
+        const maxTrades = num(sess.maxTradesPerSession, 0);
+        const maxRecovery = Math.max(1, num(sess.maxRecoverySteps, 4));
+
+        if (maxTrades > 0 && state.runs >= maxTrades) {
+            state.stopReason = { kind: 'sessionCap', amount: state.totalProfit };
+            emit({ type: 'staleSkip', message: `Session trade cap (${maxTrades}) reached - stopping.` });
+            stop('sessionCap');
+            break;
+        }
+        if (dailyTarget > 0 && state.totalProfit >= dailyTarget) {
+            state.stopReason = { kind: 'target', amount: state.totalProfit };
+            emit({ type: 'staleSkip', message: `Daily profit target hit (+${state.totalProfit.toFixed(2)}) - locking in, stopping.` });
+            stop('target');
+            break;
+        }
+        if (dailyLossCap > 0 && state.totalProfit <= -dailyLossCap) {
+            state.stopReason = { kind: 'lossCap', amount: state.totalProfit };
+            emit({ type: 'staleSkip', message: `Daily loss cap hit (${state.totalProfit.toFixed(2)}) - protecting capital, stopping.` });
+            stop('lossCap');
+            break;
+        }
+        if (recovery.step > maxRecovery) {
+            state.stopReason = { kind: 'recoveryCap', amount: state.totalProfit, step: recovery.step };
+            emit({
+                type: 'staleSkip',
+                message: `Recovery cap (${maxRecovery} steps) reached - stopping to protect account. Come back next session.`,
+            });
+            stop('recoveryCap');
+            break;
         }
 
         // SL overshoot guard: don't fire a stake that would blow past Stop Loss.
@@ -657,26 +739,22 @@ async function loop() {
         if (isWin) {
             state.won += 1;
             state.consecutiveLosses = 0;
-            state.currentStake = state.baseStake;
+            resetRecovery();
         } else {
             state.lost += 1;
             state.consecutiveLosses += 1;
-            if (state.settings.martingale) {
-                const multiplier = num(state.settings.multiplier, 2);
-                let nextStake = state.currentStake * multiplier;
-                const maxStake = num(state.settings.maxStake, 0);
-                if (maxStake > 0 && nextStake > maxStake) nextStake = maxStake;
-                state.currentStake = nextStake;
-                if (state.settings.tradeType === 'Matches / Differs' && !state.differsRiskWarned) {
-                    state.differsRiskWarned = true;
-                    emit({
-                        type: 'riskWarning',
-                        message:
-                            'Differs loss triggered martingale - recovery requires many tiny wins. Consider disabling martingale for Differs.',
-                    });
-                }
+            recovery.lossPool += state.currentStake;
+            recovery.step += 1;
+            if (state.settings.tradeType === 'Matches / Differs' && state.settings.recoveryMode !== 'flat' && !state.differsRiskWarned) {
+                state.differsRiskWarned = true;
+                emit({
+                    type: 'riskWarning',
+                    message:
+                        'Differs loss triggered recovery - recovery requires many tiny wins. Consider Flat mode for Differs.',
+                });
             }
         }
+        state.currentStake = computeNextStake(state.settings, result.payoutRatio);
 
         emit({ type: 'settled', profit: result.profit, isWin, ...snapshot() });
 
@@ -739,6 +817,7 @@ export function startAutoTrader(settings) {
     state.lost = 0;
     state.stopReason = null;
     state.differsRiskWarned = false;
+    resetRecovery();
     resetConviction();
     state.running = true;
 
@@ -751,6 +830,8 @@ export function stop(reason) {
     state.running = false;
     resetConviction();
     cleanupContractSubscription();
+    resetRecovery();
+    state.currentStake = state.baseStake;
     emit({ type: 'stopped', reason: reason || 'manual', stopReason: state.stopReason, ...snapshot() });
 }
 

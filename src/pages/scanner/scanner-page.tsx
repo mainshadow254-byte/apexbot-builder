@@ -18,6 +18,11 @@ const SETTING_KEYS = {
     safeMode: 'apex_ai_safemode',
     maxStake: 'apex_ai_maxstake',
     maxLossStreak: 'apex_ai_max_loss_streak',
+    recoveryMode: 'apex_ai_recovery_mode',
+    maxRecoverySteps: 'apex_ai_max_recovery_steps',
+    dailyLossCap: 'apex_ai_daily_loss_cap',
+    dailyTarget: 'apex_ai_daily_target',
+    maxTradesPerSession: 'apex_ai_max_trades_per_session',
     category: 'apex_ai_category',
     tradeType: 'apex_ai_tradetype',
 };
@@ -71,6 +76,11 @@ const ScannerPage = () => {
     const [multiplier, setMultiplier] = useState(load(SETTING_KEYS.multiplier, '2'));
     const [maxStake, setMaxStake] = useState(load(SETTING_KEYS.maxStake, '0'));
     const [maxLossStreak, setMaxLossStreak] = useState(load(SETTING_KEYS.maxLossStreak, '4'));
+    const [recoveryMode, setRecoveryMode] = useState(load(SETTING_KEYS.recoveryMode, 'mesa'));
+    const [maxRecoverySteps, setMaxRecoverySteps] = useState(load(SETTING_KEYS.maxRecoverySteps, '4'));
+    const [dailyLossCap, setDailyLossCap] = useState(load(SETTING_KEYS.dailyLossCap, '20'));
+    const [dailyTarget, setDailyTarget] = useState(load(SETTING_KEYS.dailyTarget, '15'));
+    const [maxTradesPerSession, setMaxTradesPerSession] = useState(load(SETTING_KEYS.maxTradesPerSession, '60'));
     const [martingale, setMartingale] = useState(loadBool(SETTING_KEYS.martingale, true));
     const [safeMode, setSafeMode] = useState(loadBool(SETTING_KEYS.safeMode, false));
     const [category, setCategory] = useState(load(SETTING_KEYS.category, 'synthetic_index'));
@@ -134,6 +144,11 @@ const ScannerPage = () => {
         localStorage.setItem(SETTING_KEYS.multiplier, multiplier);
         localStorage.setItem(SETTING_KEYS.maxStake, maxStake);
         localStorage.setItem(SETTING_KEYS.maxLossStreak, maxLossStreak);
+        localStorage.setItem(SETTING_KEYS.recoveryMode, recoveryMode);
+        localStorage.setItem(SETTING_KEYS.maxRecoverySteps, maxRecoverySteps);
+        localStorage.setItem(SETTING_KEYS.dailyLossCap, dailyLossCap);
+        localStorage.setItem(SETTING_KEYS.dailyTarget, dailyTarget);
+        localStorage.setItem(SETTING_KEYS.maxTradesPerSession, maxTradesPerSession);
         localStorage.setItem(SETTING_KEYS.martingale, String(martingale));
         localStorage.setItem(SETTING_KEYS.safeMode, String(safeMode));
         localStorage.setItem(SETTING_KEYS.category, category);
@@ -151,11 +166,28 @@ const ScannerPage = () => {
             multiplier,
             maxStake,
             maxLossStreak,
+            recoveryMode,
+            maxRecoverySteps,
+            dailyLossCap,
+            dailyTarget,
+            maxTradesPerSession,
             martingale,
             safeMode,
             category,
             tradeType,
         });
+    };
+
+    const winRate = stats.runs > 0 ? Math.round((stats.won / stats.runs) * 100) : 0;
+    const recoveryStep = stats.recoveryStep || 0;
+    const recoveryLossPool = stats.recoveryLossPool || 0;
+    const stopTitle = (kind: string) => {
+        if (kind === 'takeProfit' || kind === 'target') return 'Take Profit Hit';
+        if (kind === 'lossStreak') return 'Loss Streak Halt';
+        if (kind === 'sessionCap') return 'Session Trade Cap Hit';
+        if (kind === 'lossCap') return 'Daily Loss Cap Hit';
+        if (kind === 'recoveryCap') return 'Recovery Cap Hit';
+        return 'Stop Loss Hit';
     };
 
     return (
@@ -187,6 +219,29 @@ const ScannerPage = () => {
                 <div>
                     <span>Stake</span>
                     <b>{stats.currentStake}</b>
+                </div>
+            </div>
+
+            <div className='apex-ai__pro-stats'>
+                <div>
+                    <span>Win rate</span>
+                    <b>{winRate}%</b>
+                </div>
+                <div>
+                    <span>Recovery</span>
+                    <b>
+                        {recoveryStep}/{maxRecoverySteps}
+                    </b>
+                </div>
+                <div>
+                    <span>Loss pool</span>
+                    <b>{recoveryLossPool.toFixed(2)}</b>
+                </div>
+                <div>
+                    <span>Caps</span>
+                    <b>
+                        +{dailyTarget} / -{dailyLossCap}
+                    </b>
                 </div>
             </div>
 
@@ -251,6 +306,14 @@ const ScannerPage = () => {
                     />
                 </label>
                 <label>
+                    Recovery Mode
+                    <select value={recoveryMode} disabled={running} onChange={event => setRecoveryMode(event.target.value)}>
+                        <option value='mesa'>Mesa recovery</option>
+                        <option value='pls'>PLS gentle scaling</option>
+                        <option value='flat'>Flat stake</option>
+                    </select>
+                </label>
+                <label>
                     Max Stake (0=off)
                     <input
                         type='number'
@@ -266,6 +329,42 @@ const ScannerPage = () => {
                         value={maxLossStreak}
                         disabled={running}
                         onChange={event => setMaxLossStreak(event.target.value)}
+                    />
+                </label>
+                <label>
+                    Max Recovery Steps
+                    <input
+                        type='number'
+                        value={maxRecoverySteps}
+                        disabled={running}
+                        onChange={event => setMaxRecoverySteps(event.target.value)}
+                    />
+                </label>
+                <label>
+                    Daily Loss Cap
+                    <input
+                        type='number'
+                        value={dailyLossCap}
+                        disabled={running}
+                        onChange={event => setDailyLossCap(event.target.value)}
+                    />
+                </label>
+                <label>
+                    Daily Target
+                    <input
+                        type='number'
+                        value={dailyTarget}
+                        disabled={running}
+                        onChange={event => setDailyTarget(event.target.value)}
+                    />
+                </label>
+                <label>
+                    Max Trades / Session
+                    <input
+                        type='number'
+                        value={maxTradesPerSession}
+                        disabled={running}
+                        onChange={event => setMaxTradesPerSession(event.target.value)}
                     />
                 </label>
                 <label className='apex-ai__toggle'>
@@ -304,7 +403,7 @@ const ScannerPage = () => {
                 <b>Rise/Fall uses a mean-reversion engine</b> tuned for synthetic indices - it enters when price
                 is stretched to an extreme (overbought/oversold + Bollinger + fading momentum) and bets on the
                 reversal, on calmer Volatility indices only (Boom/Crash/Jump excluded). Around 5-tick duration works best.
-                It only fires on strong, one-sided setups that persist across 3 scans.
+                It only fires on strong, one-sided stretched setups; digit modes keep stricter multi-scan confirmation.
                 <br /><b>Honest note:</b> synthetics are RNG-driven - a good engine improves consistency and cuts bad
                 entries, but no strategy wins every time. Manage risk; test on Demo.
             </div>
@@ -321,6 +420,15 @@ const ScannerPage = () => {
             <div className='apex-ai__note apex-ai__note--eval'>
                 📊 <b>To measure true win rate:</b> set Martingale OFF, a small flat Stake, and a wide Stop Loss,
                 then run 25+ trades. Martingale is a money-management layer - turn it on only after you trust the raw edge.
+            </div>
+
+            <div className='apex-ai__note'>
+                <b>Pro recovery engine:</b> the win rate on synthetics is around 50-53% and cannot honestly be pushed
+                far beyond that. What makes tools profitable is <b>payout-aware recovery</b> (recovers losses plus a
+                small profit on the next win, not blind doubling) plus <b>hard session caps</b> (stop after{' '}
+                {maxRecoverySteps} recovery steps / daily loss cap / profit target). Modest edge + smart recovery +
+                discipline = sustainable. No strategy wins every trade - the caps are what protect your account.
+                Test on Demo.
             </div>
 
             <div className='apex-ai__scanner'>
@@ -379,13 +487,7 @@ const ScannerPage = () => {
                 <div className='apex-ai__popup-overlay' onClick={() => setResultPopup(null)}>
                     <div className='apex-ai__popup' onClick={event => event.stopPropagation()}>
                         <div className='apex-ai__popup-icon'>AI</div>
-                        <div className='apex-ai__popup-title'>
-                            {resultPopup.kind === 'takeProfit'
-                                ? 'Take Profit Hit'
-                                : resultPopup.kind === 'lossStreak'
-                                  ? 'Loss Streak Halt'
-                                  : 'Stop Loss Hit'}
-                        </div>
+                        <div className='apex-ai__popup-title'>{stopTitle(resultPopup.kind)}</div>
                         <div className={`apex-ai__popup-amount ${resultPopup.amount >= 0 ? 'pos' : 'neg'}`}>
                             {resultPopup.amount >= 0 ? '+' : ''}
                             {resultPopup.amount.toFixed(2)} USD

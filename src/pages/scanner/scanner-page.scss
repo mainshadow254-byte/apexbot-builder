@@ -65,6 +65,32 @@
         }
     }
 
+    &__pro-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        margin-bottom: 1rem;
+
+        > div {
+            padding: 7px;
+            text-align: center;
+            background: rgb(47 227 139 / 8%);
+            border: 1px solid rgb(47 227 139 / 18%);
+            border-radius: 8px;
+
+            span {
+                display: block;
+                color: var(--text-less-prominent);
+                font-size: 0.95rem;
+                text-transform: uppercase;
+            }
+
+            b {
+                font-size: 1.25rem;
+            }
+        }
+    }
+
     &__settings {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -276,6 +302,10 @@
         padding-bottom: 8rem;
 
         &__stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        &__pro-stats {
             grid-template-columns: repeat(2, 1fr);
         }
 
